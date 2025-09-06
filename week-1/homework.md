@@ -14,6 +14,8 @@ However, for computers, it's just a bunch of numbers in vertices' coordinates an
 
 I want to force the participants to think like a computer and counterintuitively analyze a polygon as an array of vertices arranged in a certain order. For this exercise, I'm picking the simple [Ear Clipping algorithm for Polygon Triangulation](https://en.wikipedia.org/wiki/Polygon_triangulation#Ear_clipping_method).
 
+_This exercise is dedicated to Godfried Toussaint, who taught me the beauty of computational geometry algorithms in 2018._
+
 ## Ear Clipping Algorithm
 
 For a detailed, step-by-step explanation of the Ear Clipping algorithm, I recommend the following resource:
