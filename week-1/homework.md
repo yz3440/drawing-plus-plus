@@ -61,8 +61,8 @@ Then, we ask the participants to draw the polygon with the Ear Clipping algorith
 
 ![Triangulation with Ear Clipping algorithm](assets/exercise-2.jpg)
 
-## Results
+## Participant’s Experience
 
-Here are some results from the exercise.
+Here are some participants’ drawing from the exercise.
 
 To be continued...
