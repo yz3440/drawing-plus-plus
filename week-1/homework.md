@@ -63,6 +63,10 @@ Then, we ask the participants to draw the polygon with the Ear Clipping algorith
 
 ## Participant’s Experience
 
+I tested the exercise with a few friends with mixed knowledge about the algorithm.
+
+People finished Part 1 very fast and the triangles were quite evenly distributed. In Part 2, people struggled to follow the exact instructions. They keep forgetting the origin point, which is the pointer index in the iterative process. The Ear Clipping results have more [fan-shaped triangle groups](https://en.wikipedia.org/wiki/Fan_triangulation), and less even due to the fixed order of ear finding.
+
 Here are some participants’ drawing from the exercise.
 
-To be continued...
+TODO: Add participants’ drawing.
