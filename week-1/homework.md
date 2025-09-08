@@ -6,7 +6,7 @@ Create a drawing exercise or game that teaches a computational concept. Be sure 
 
 ## Statement
 
-I want to find a way to represent a computational geometry algorithm. Geometry is far more intuitive for human than for computers.
+I want to find a way to represent a computational geometry algorithm. Geometry is far more intuitive for humans than for computers.
 
 We all have a well trained neural network to visually analyze geometry. To identify patterns and relationships between vertices and edges, we can pretty much one-shot solve the problem at a glance.
 
@@ -14,7 +14,7 @@ However, for computers, it's just a bunch of numbers in vertices' coordinates an
 
 I want to force the participants to think like a computer and counterintuitively analyze a polygon as an array of vertices arranged in a certain order. For this exercise, I'm picking the simple [Ear Clipping algorithm for Polygon Triangulation](https://en.wikipedia.org/wiki/Polygon_triangulation#Ear_clipping_method).
 
-_This exercise is dedicated to Godfried Toussaint, who taught me the beauty of computational geometry algorithms in 2018._
+_This exercise is dedicated to [Godfried Toussaint](https://en.wikipedia.org/wiki/Godfried_Toussaint), who taught me the beauty of computational geometry algorithms in 2018._
 
 ## Ear Clipping Algorithm
 
