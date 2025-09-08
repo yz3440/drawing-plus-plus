@@ -10,7 +10,7 @@ I want to find a way to represent a computational geometry algorithm. Geometry i
 
 We all have a well trained neural network to visually analyze geometry. To identify patterns and relationships between vertices and edges, we can pretty much one-shot solve the problem at a glance.
 
-However, for computers, it's just a bunch of numbers in vertices' coordinates and abstract graph structures. Algorithms for computational geometry are oftentimes step-by-step processes to iterate over vertices and edges, and obscure ways to identify and handle all possibleedge cases.
+However, for computers, it's just a bunch of numbers in vertices' coordinates and abstract graph structures. Algorithms for computational geometry are oftentimes step-by-step processes to iterate over vertices and edges, and meticulous handling of all possible edge cases.
 
 I want to force the participants to think like a computer and counterintuitively analyze a polygon as an array of vertices arranged in a certain order. For this exercise, I'm picking the simple [Ear Clipping algorithm for Polygon Triangulation](https://en.wikipedia.org/wiki/Polygon_triangulation#Ear_clipping_method).
 
