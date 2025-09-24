@@ -28,9 +28,11 @@ The largest thing I see is probably the sky, which is probably the most of the u
 
 ### Create a unique instrument for making a drawing
 
-I don't know what to do with this. I'm scratching my head and my hair falls off. I think I'll use the hair as a brush or some sort.
+I don't know what to do with this. I'm scratching my head and my hair falls off. I think I'll use the hair as a brush or some sort. Then I don't think if it's drawing or painting... So I decided to trace the polygons that the hair created when it's tangled together.
 
-To be uploaded!!
+![Unique instrument for making a drawing](assets/b1.jpg)
+
+![Unique instrument for making a drawing, with hair](assets/b2.jpg)
 
 ### Make a drawing come to life
 
