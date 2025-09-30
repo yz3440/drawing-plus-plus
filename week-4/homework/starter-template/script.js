@@ -1,6 +1,9 @@
+const CANVAS_WIDTH = 800;
+const CANVAS_HEIGHT = 600;
+
 // P5.js sketch
 function setup() {
-  let canvas = createCanvas(800, 600);
+  let canvas = createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
   canvas.parent('canvas-container');
 
   background(0);
