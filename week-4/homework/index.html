@@ -8,6 +8,15 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- P5.js CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <style>
+      /* Prevent layout shift from p5.js video elements */
+      video {
+        display: none !important;
+        position: absolute !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+      }
+    </style>
   </head>
   <body
     class="bg-black text-white min-h-screen flex items-center justify-center"
@@ -27,7 +36,9 @@
       </div>
     </div>
 
-    <!-- Link to your p5.js script -->
+    <!-- Camera utilities module -->
+    <script src="cameraUtils.js"></script>
+    <!-- Main p5.js script -->
     <script src="script.js"></script>
   </body>
 </html>
