@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Flocking Cloud</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style></style>
+  </head>
+  <body
+    class="bg-black text-white min-h-screen flex items-center justify-center bg-black"
+  >
+    <div class="text-center">
+      <div class="p-2 border-2 border-white/20 bg-neutral-900/20">
+        <div class="p-2 border-2 border-white/40 bg-neutral-900/20">
+          <div class="p-2 border-2 border-white/60 bg-neutral-800/20">
+            <div class="p-2 border-2 border-white/80 bg-neutral-800/20">
+              <div class="overflow-hidden border-2 border-white">
+                <div id="canvas-container"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Application -->
+    <script type="module" src="scripts/main.js"></script>
+  </body>
+</html>
