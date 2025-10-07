@@ -328,7 +328,7 @@ class CloudPaint {
     await this.initWebGPU();
     this.initBuffers();
     await this.initRenderPipeline();
-    this.initGUI();
+    // this.initGUI();
 
     this.canvas.addEventListener('mousemove', (event) => {
       if (event.buttons !== 1) {
