@@ -5,33 +5,88 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Flocking Cloud</title>
 
-    <!-- dat.GUI CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/dat.gui@0.7.9/build/dat.gui.min.js"></script>
-
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <style></style>
+    <style>
+      #canvas-container {
+        perspective: 400px;
+        perspective-origin: 50% 50%;
+      }
+      #canvas-container canvas {
+        transform: translateY(-50px) rotateX(-30deg) scale(1.5);
+        display: block;
+        margin: 0 auto;
+        border: 1px solid #00000033;
+        cursor: pointer;
+      }
+
+      #room {
+        perspective: 400px;
+        perspective-origin: 50% 50%;
+      }
+      #room > div {
+        background: #757575;
+      }
+      #ceiling {
+        position: absolute;
+        left: calc(50% - 500px);
+        top: calc(50% - 400px);
+        transform-origin: 50% 50%;
+        transform: rotateX(-30deg);
+        width: 1000px;
+        height: 800px;
+        box-shadow: inset 0 0 80px 10px rgba(0, 0, 0, 0.25);
+      }
+      #wall-left {
+        position: absolute;
+        left: calc(50% - 600px);
+        top: calc(50% - 40px);
+        transform-origin: 50% 50%;
+        transform: rotateX(-30deg) rotateY(90deg) translateZ(-400px)
+          translateY(-1430px);
+        width: 1000px;
+        height: 2000px;
+        box-shadow: inset 0 0 80px 10px rgba(0, 0, 0, 0.25);
+      }
+      #wall-right {
+        position: absolute;
+        left: calc(50% - 600px);
+        top: calc(50% - 40px);
+        transform-origin: 50% 50%;
+        transform: rotateX(-30deg) rotateY(-90deg) translateZ(-400px)
+          translateY(-1670px);
+        width: 1000px;
+        height: 2000px;
+        box-shadow: inset 0 0 80px 10px rgba(0, 0, 0, 0.25);
+      }
+      #wall-front {
+        position: absolute;
+        left: calc(50% - 500px);
+        top: calc(50% - 400px);
+        transform-origin: 50% 50%;
+        transform: rotateX(60deg) translateZ(-400px);
+        width: 1000px;
+        height: 800px;
+        box-shadow: inset 0 0 80px 10px rgba(0, 0, 0, 0.25);
+      }
+    </style>
   </head>
   <body
-    class="bg-black text-white min-h-screen flex items-center justify-center"
+    class="bg-black text-white min-h-screen flex items-center justify-center bg-black"
   >
+    <div class="absolute top-0 left-0 w-full h-full" id="room">
+      <div id="wall-left"></div>
+      <div id="wall-right"></div>
+      <div id="wall-front"></div>
+      <div id="ceiling"></div>
+    </div>
+
     <div class="text-center">
-      <div class="p-2 border-2 border-white/20 bg-neutral-900/20">
-        <div class="p-2 border-2 border-white/40 bg-neutral-900/20">
-          <div class="p-2 border-2 border-white/60 bg-neutral-800/20">
-            <div class="p-2 border-2 border-white/80 bg-neutral-800/20">
-              <div class="overflow-hidden border-2 border-white">
-                <div id="canvas-container"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <div id="canvas-container"></div>
     </div>
 
     <!-- Main Application -->
-    <script type="module" src="scripts/utils.js"></script>
     <script type="module" src="scripts/main.js"></script>
   </body>
 </html>
