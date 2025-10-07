@@ -13,10 +13,10 @@ let format = null;
 // Simulation parameters
 const params = {
   numBoids: 48,
-  separationDistance: 0.05,
+  separationDistance: 1,
   alignmentDistance: 0.1,
   cohesionDistance: 0.1,
-  separationScale: 0.05,
+  separationScale: 0.2,
   alignmentScale: 0.02,
   cohesionScale: 0.005,
   maxSpeed: 0.5,
@@ -34,6 +34,7 @@ const buffers = {
   params: null,
   cloudUniforms: null,
   numBoidsBuffer: null,
+  mouseBoid: null,
 };
 
 // Pipelines and bind groups
@@ -137,6 +138,24 @@ function initBuffers() {
 
   new Uint32Array(buffers.numBoidsBuffer.getMappedRange()).set(numBoidsData);
   buffers.numBoidsBuffer.unmap();
+
+  // Mouse boid buffer (single boid with position and velocity)
+  const mouseBoidData = new Float32Array([
+    params.mouseX, // pos.x
+    params.mouseY, // pos.y
+    0.0, // vel.x
+    0.0, // vel.y
+  ]);
+
+  buffers.mouseBoid = device.createBuffer({
+    size: 16, // 4 floats * 4 bytes
+    usage:
+      GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
+    mappedAtCreation: true,
+  });
+
+  new Float32Array(buffers.mouseBoid.getMappedRange()).set(mouseBoidData);
+  buffers.mouseBoid.unmap();
 }
 
 // Initialize compute pipeline
@@ -257,6 +276,11 @@ async function initCloudPipeline() {
         visibility: GPUShaderStage.FRAGMENT,
         buffer: { type: 'uniform' },
       },
+      {
+        binding: 3,
+        visibility: GPUShaderStage.FRAGMENT,
+        buffer: { type: 'read-only-storage' },
+      },
     ],
   });
 
@@ -285,6 +309,7 @@ async function initCloudPipeline() {
       { binding: 0, resource: { buffer: buffers.boids[0] } },
       { binding: 1, resource: { buffer: buffers.cloudUniforms } },
       { binding: 2, resource: { buffer: buffers.numBoidsBuffer } },
+      { binding: 3, resource: { buffer: buffers.mouseBoid } },
     ],
   });
 }
@@ -307,6 +332,15 @@ function updateParams() {
   ]);
 
   device.queue.writeBuffer(buffers.params, 0, paramsData);
+
+  // Update mouse boid position
+  const mouseBoidData = new Float32Array([
+    params.mouseX,
+    params.mouseY,
+    0.0,
+    0.0,
+  ]);
+  device.queue.writeBuffer(buffers.mouseBoid, 0, mouseBoidData);
 }
 
 // Render loop
@@ -356,6 +390,7 @@ function render() {
         { binding: 0, resource: { buffer: currentBoidBuffer } },
         { binding: 1, resource: { buffer: buffers.cloudUniforms } },
         { binding: 2, resource: { buffer: buffers.numBoidsBuffer } },
+        { binding: 3, resource: { buffer: buffers.mouseBoid } },
       ],
     });
 
@@ -368,6 +403,10 @@ function render() {
     renderPass.setPipeline(renderPipeline);
     renderPass.setVertexBuffer(0, buffers.boids[(frame + 1) % 2]);
     renderPass.draw(3, params.numBoids);
+
+    // Render mouse boid (bigger)
+    renderPass.setVertexBuffer(0, buffers.mouseBoid);
+    renderPass.draw(3, 1);
   }
 
   renderPass.end();
@@ -420,8 +459,12 @@ async function init() {
   try {
     canvas = setupCanvas();
     canvas.addEventListener('mousemove', (event) => {
-      params.mouseX = (event.clientX / canvas.width) * 2 - 1;
-      params.mouseY = (event.clientY / canvas.height) * 2 - 1;
+      // Convert mouse position to normalized device coordinates (-1 to 1, y up)
+      const rect = canvas.getBoundingClientRect();
+      const newX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      const newY = -(((event.clientY - rect.top) / rect.height) * 2 - 1);
+      params.mouseX = params.mouseX * 0.9 + newX * 0.1;
+      params.mouseY = params.mouseY * 0.9 + newY * 0.1;
       updateParams();
     });
 

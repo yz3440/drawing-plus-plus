@@ -16,9 +16,22 @@ fn vertexMain(
 ) -> VertexOutput {
   var output: VertexOutput;
   
+  // Check if this is the mouse boid (zero velocity)
+  let speed = length(boidVel);
+  let isMouse = speed < 0.001;
+  
   // Create triangle pointing in direction of velocity
-  let angle = atan2(boidVel.y, boidVel.x);
-  let size = 0.01;
+  // For mouse boid, point upward
+  var angle = atan2(boidVel.y, boidVel.x);
+  if (isMouse) {
+    angle = 1.5708; // 90 degrees (pointing up)
+  }
+  
+  // Make mouse boid 3x bigger
+  var size = 0.01;
+  if (isMouse) {
+    size = 0.03;
+  }
   
   var vertices = array<vec2f, 3>(
     vec2f(size * 2.0, 0.0),
@@ -37,9 +50,12 @@ fn vertexMain(
   
   output.position = vec4f(boidPos + rotated, 0.0, 1.0);
   
-  // Color based on velocity
-  let speed = length(boidVel);
-  output.color = vec4f(0.3 + speed * 2.0, 0.5, 1.0 - speed, 1.0);
+  // Color based on velocity - mouse boid gets a distinct color
+  if (isMouse) {
+    output.color = vec4f(1.0, 0.3, 0.3, 1.0); // Red for mouse
+  } else {
+    output.color = vec4f(0.3 + speed * 2.0, 0.5, 1.0 - speed, 1.0);
+  }
   
   return output;
 }

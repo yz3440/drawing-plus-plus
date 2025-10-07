@@ -16,6 +16,7 @@ struct CloudUniforms {
 @group(0) @binding(0) var<storage, read> boids: array<Boid>;
 @group(0) @binding(1) var<uniform> cloudParams: CloudUniforms;
 @group(0) @binding(2) var<uniform> numBoids: u32;
+@group(0) @binding(3) var<storage, read> mouseBoid: Boid;
 
 struct VertexOutput {
   @builtin(position) position: vec4f,
@@ -120,19 +121,24 @@ fn scene(p: vec3f, time: f32) -> f32 {
     let boidPos3D = vec3f(boid.pos.x * 4.0, -boid.pos.y * 3.0, 0.0);
     
     // Add small spheres at boid positions
-    let boidDist = sdSphere(p, boidPos3D, 0.02);
+    let boidDist = sdSphere(p, boidPos3D, 0.1);
     dist = smin(dist, boidDist, 0.06);
   }
   
+  // Add mouse boid as a larger sphere
+  let mousePos3D = vec3f(mouseBoid.pos.x * 4.0, -mouseBoid.pos.y * 3.0, 0.0);
+  let mouseDist = sdSphere(p, mousePos3D, 0.3); // 3x larger radius
+  dist = smin(dist, mouseDist, 0.1);
+  
   // Add noise
-  let t = time * 0.1;
-  let noiseVal = fbm(p * 0.5 + vec3f(4.0 * sin(t), 4.0 * cos(t), 0.0));
+  let t = time * 0.1 + 1.0;
+  let noiseVal = fbm(p * 2.0 + vec3f(t, t, t));
   
   return -dist + noiseVal * 1.0;
 }
 
 const MARCH_SIZE = 0.1;
-const MAX_STEPS = 60;
+const MAX_STEPS = 10;
 const SUN_POSITION = vec3f(1.0, 0.0, 5.0);
 
 // Volumetric ray marching
@@ -165,9 +171,9 @@ fn raymarch(rayOrigin: vec3f, rayDirection: vec3f, time: f32) -> vec4f {
       depth += MARCH_SIZE;
     } else {
       if (i == 0) {
-        depth += MARCH_SIZE * 10.0;
+        depth += 4.9;
       } else {
-      depth += MARCH_SIZE * 1.5;
+      depth += MARCH_SIZE;
       }
     }
     

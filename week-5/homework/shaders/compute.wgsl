@@ -43,25 +43,17 @@ fn main(@builtin(global_invocation_id) GlobalInvocationID: vec3u) {
   
   // Calculate flocking forces
   for (var i = 0u; i < numBoids; i = i + 1u) {
-    var other = boidsIn[i];
-    var separationFactor = 1.0;
     if (i == index) {
       continue;
     }
-
-    if(i == numBoids) {
-      // it's mouse
-      other.pos = vec2f(params.mouseX, params.mouseY);
-      other.vel = vec2f(0.0, 0.0);
-      separationFactor = 5.0;
-    }
     
+    let other = boidsIn[i];
     let diff = boid.pos - other.pos;
     let dist = length(diff);
     
     // Separation: avoid crowding neighbors
     if (dist < params.separationDistance && dist > 0.0) {
-      separation += normalize(diff) / dist * separationFactor;
+      separation += normalize(diff) / dist;
       separationCount += 1.0;
     }
     
@@ -75,6 +67,18 @@ fn main(@builtin(global_invocation_id) GlobalInvocationID: vec3u) {
       cohesion += other.pos;
       cohesionCount += 1.0;
     }
+  }
+  
+  // Mouse repulsion - apply strong separation force from mouse
+  let mousePos = vec2f(params.mouseX, params.mouseY);
+  let mouseDiff = boid.pos - mousePos;
+  let mouseDist = length(mouseDiff);
+  
+  // Repel boids within a larger radius from mouse
+  if (mouseDist < params.separationDistance * 3.0 && mouseDist > 0.0) {
+    // Stronger repulsion force for mouse (5x normal)
+    separation += normalize(mouseDiff) / mouseDist * 5.0;
+    separationCount += 1.0;
   }
   
   var acceleration = vec2f(0.0, 0.0);
