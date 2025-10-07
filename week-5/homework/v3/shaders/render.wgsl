@@ -120,7 +120,7 @@ fn scene(p: vec3f, time: f32) -> f32 {
     var mouse = mousePath[i];
     mouse.pos.x *= 4.0 * 0.7;
     mouse.pos.y *= 3.0 * 0.7;
-    mouse.pos.z = (mouse.pos.z - time) * 1.0;
+    mouse.pos.z = -(mouse.pos.z - time) * 1.0;
     let mouseDist = sdSphere(p, mouse.pos.xyz, 0.1);
     
     if(cloudParams.smoothMinParam > 0.0){
