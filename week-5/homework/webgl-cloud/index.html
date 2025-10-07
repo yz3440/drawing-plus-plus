@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Flocking Cloud</title>
+    <title>Cloud</title>
 
     <!-- dat.GUI CDN -->
     <script src="https://cdn.jsdelivr.net/npm/dat.gui@0.7.9/build/dat.gui.min.js"></script>
@@ -30,8 +30,17 @@
       </div>
     </div>
 
+    <!-- Three.js CDN -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+        }
+      }
+    </script>
+
     <!-- Main Application -->
-    <script type="module" src="scripts/utils.js"></script>
     <script type="module" src="scripts/main.js"></script>
   </body>
 </html>
