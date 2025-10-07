@@ -10,7 +10,7 @@ Generative Drawing
 
 [Computer Grass is Natural Grass, Charles and Colette Bangert](https://www.atariarchives.org/artist/sec5.php)
 
-My Mother’s Letters, Vera Molnar
+[My Mother’s Letters, Vera Molnar](readings/1576070.pdf)
 
 ## Async
 
