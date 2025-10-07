@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cloud</title>
+
+    <!-- dat.GUI CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/dat.gui@0.7.9/build/dat.gui.min.js"></script>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style></style>
+  </head>
+  <body
+    class="bg-black text-white min-h-screen flex items-center justify-center"
+  >
+    <div class="text-center">
+      <div class="p-2 border-2 border-white/20 bg-neutral-900/20">
+        <div class="p-2 border-2 border-white/40 bg-neutral-900/20">
+          <div class="p-2 border-2 border-white/60 bg-neutral-800/20">
+            <div class="p-2 border-2 border-white/80 bg-neutral-800/20">
+              <div class="overflow-hidden border-2 border-white">
+                <div id="canvas-container"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Three.js CDN -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+        }
+      }
+    </script>
+
+    <!-- Main Application -->
+    <script type="module" src="scripts/main.js"></script>
+  </body>
+</html>
