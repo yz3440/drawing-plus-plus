@@ -31,13 +31,30 @@ const DEFAULT_CLOUD_PARAMS = {
 class CloudPaint {
   constructor() {
     this.startTime = Date.now();
-
     this.canvas = document.createElement('canvas');
     this.canvas.width = 400;
     this.canvas.height = 400;
     document.querySelector('#canvas-container').appendChild(this.canvas);
 
     if (!navigator.gpu) {
+      const ctx = this.canvas.getContext('2d');
+      ctx.fillStyle = 'black';
+      ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      ctx.fillStyle = 'white';
+      ctx.font = '16px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(
+        'WebGPU not supported on this browser.',
+        this.canvas.width / 2,
+        this.canvas.height / 2
+      );
+      ctx.fillText(
+        'Please use a browser that supports WebGPU.',
+        this.canvas.width / 2,
+        this.canvas.height / 2 + 20
+      );
+
       throw new Error('WebGPU not supported on this browser.');
     }
 
