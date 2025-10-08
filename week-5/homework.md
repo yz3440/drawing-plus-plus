@@ -32,3 +32,8 @@ The disappearing effect is essentially the cloud’s z position escaping the ray
 
 ![assets/v4.gif](assets/v4.gif)  
 [prototype link](https://yz3440.github.io/drawing-plus-plus/week-5/homework/v4/)
+
+## Quotes from Readings
+
+- [My Mother’s Letters, Vera Molnar](readings/1576070.pdf)
+  - Actually I do not know quite what I wanted: to simulate my mother's writing or to use her handwriting as a pretext for working out new principles of composition and to remain, in spite of everything, in the specific and perhaps classical territory of the visual arts.
