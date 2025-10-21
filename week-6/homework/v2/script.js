@@ -7,10 +7,13 @@ let drawables = [];
 // Orbit control variables
 let orbitX = 0;
 let orbitY = 0;
-let orbitRadius = 100;
+let orbitRadius = 200;
 let isMousePressed = false;
 let lastMouseX = 0;
 let lastMouseY = 0;
+
+const MAX_LIFE = 1000;
+const LIFE_TO_ALPHA = 255 / MAX_LIFE;
 
 class Drawable {
   constructor(x, y, z, eyeX, eyeY, eyeZ, frame) {
@@ -22,6 +25,7 @@ class Drawable {
     this.eyeZ = eyeZ;
     this.frame = frame;
     this.angle = 0;
+    this.life = MAX_LIFE;
 
     // Store the eye direction as rotation axis
     let axisLen = sqrt(eyeX * eyeX + eyeY * eyeY + eyeZ * eyeZ);
@@ -62,6 +66,49 @@ class Drawable {
 
     applyMatrix(...m);
   }
+  // Rotate to align circle normal with eye line axis
+  alignWithAxis() {
+    // Default circle normal is (0, 0, 1)
+    // We want to rotate it to align with (axisX, axisY, axisZ)
+
+    let defaultNormal = { x: 0, y: 0, z: 1 };
+    let targetNormal = { x: this.axisX, y: this.axisY, z: this.axisZ };
+
+    // Calculate rotation axis (cross product)
+    let rotAxis = {
+      x: defaultNormal.y * targetNormal.z - defaultNormal.z * targetNormal.y,
+      y: defaultNormal.z * targetNormal.x - defaultNormal.x * targetNormal.z,
+      z: defaultNormal.x * targetNormal.y - defaultNormal.y * targetNormal.x,
+    };
+
+    let rotAxisLen = sqrt(
+      rotAxis.x * rotAxis.x + rotAxis.y * rotAxis.y + rotAxis.z * rotAxis.z
+    );
+
+    // If rotation axis is zero, vectors are parallel or anti-parallel
+    if (rotAxisLen < 0.0001) {
+      // Check if they're pointing in opposite directions
+      let dot = defaultNormal.z * targetNormal.z;
+      if (dot < 0) {
+        // Rotate 180 degrees around any perpendicular axis (use X axis)
+        this.rotateAround(PI, 1, 0, 0);
+      }
+      // If dot > 0, they're already aligned, no rotation needed
+      return;
+    }
+
+    // Normalize rotation axis
+    rotAxis.x /= rotAxisLen;
+    rotAxis.y /= rotAxisLen;
+    rotAxis.z /= rotAxisLen;
+
+    // Calculate rotation angle
+    let dot = defaultNormal.z * targetNormal.z; // Only z component is non-zero for default normal
+    let angle = acos(constrain(dot, -1, 1));
+
+    // Apply rotation
+    this.rotateAround(angle, rotAxis.x, rotAxis.y, rotAxis.z);
+  }
 
   draw(currentFrameCount) {
     push();
@@ -77,9 +124,22 @@ class Drawable {
     // Translate to object position
     translate(this.x, this.y, this.z);
 
-    // Draw the circle (always faces camera)
-    fill(100, 200, 255);
-    circle(0, 0, 10);
+    fill(255, 255, 255, this.life * LIFE_TO_ALPHA);
+    stroke(255, 255, 255, this.life * LIFE_TO_ALPHA);
+    // Calculate the normalized eye vector (axis), and scale to abs(this.z)
+    let mag = sqrt(
+      this.eyeX * this.eyeX + this.eyeY * this.eyeY + this.eyeZ * this.eyeZ
+    );
+    let scale = -mag * 0.1;
+    let centerX = (this.eyeX / mag) * scale;
+    let centerY = (this.eyeY / mag) * scale;
+    let centerZ = (this.eyeZ / mag) * scale;
+    let lineCenter = { x: centerX, y: centerY, z: centerZ };
+    line(0, 0, 0, lineCenter.x, lineCenter.y, lineCenter.z);
+    this.life -= 1;
+    if (this.life < 0) {
+      drawables.splice(drawables.indexOf(this), 1);
+    }
     pop();
   }
 }
@@ -89,8 +149,6 @@ function setup() {
   let canvas = createCanvas(WIDTH, HEIGHT, WEBGL);
   canvas.parent('canvas-container');
 
-  //font = loadFont('./Staatliches-Regular.ttf');
-
   background(0);
   cam = createCamera();
   cam.setPosition(0, 0, 100);
@@ -98,6 +156,10 @@ function setup() {
 }
 
 function draw() {
+  if (mouseIsPressed && mouseButton === LEFT) {
+    createDrawableAtMouse();
+  }
+
   background(0, 50);
 
   // Update camera position based on orbit angles
@@ -117,16 +179,16 @@ function draw() {
 
   // Draw center circle
   push();
-  fill(255, 100, 100);
-  circle(0, 0, 10);
+
+  noFill();
+  stroke(255, 255, 255);
+  strokeWeight(0.1);
+  sphere(10, 24, 4);
   pop();
 }
 
 function mousePressed() {
   // Left click to create object
-  if (mouseButton === LEFT) {
-    createDrawableAtMouse();
-  }
 
   // Right click for orbit control
   if (mouseButton === RIGHT) {
@@ -158,7 +220,7 @@ function createDrawableAtMouse() {
   };
 
   // Define the plane at half orbit radius from origin
-  let planeDistance = orbitRadius / 2;
+  let planeDistance = orbitRadius * 0.1;
   let planeCenter = {
     x: eyeDir.x * planeDistance,
     y: eyeDir.y * planeDistance,
@@ -223,6 +285,6 @@ function mouseDragged() {
 // Mouse wheel for zooming
 function mouseWheel(event) {
   orbitRadius += event.delta * 0.5;
-  orbitRadius = constrain(orbitRadius, 50, 300);
+  orbitRadius = constrain(orbitRadius, 200, 400);
   return false; // Prevent default scrolling
 }
