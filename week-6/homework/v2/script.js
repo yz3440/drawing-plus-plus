@@ -144,10 +144,10 @@ class Drawable {
   }
 }
 
-// P5.js sketch
 function setup() {
   let canvas = createCanvas(WIDTH, HEIGHT, WEBGL);
   canvas.parent('canvas-container');
+  canvas.style('cursor', 'crosshair');
 
   background(0);
   cam = createCamera();
