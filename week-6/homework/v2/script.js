@@ -12,7 +12,7 @@ let isMousePressed = false;
 let lastMouseX = 0;
 let lastMouseY = 0;
 
-const MAX_LIFE = 1000;
+const MAX_LIFE = 3000;
 const LIFE_TO_ALPHA = 255 / MAX_LIFE;
 
 class Drawable {
