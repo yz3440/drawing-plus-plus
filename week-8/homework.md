@@ -16,8 +16,12 @@ After some experimentation, I made the following mapping:
 
 Here's the [live link](https://yz3440.github.io/drawing-plus-plus/week-8/homework/v1).
 
-![Screenshot](assets/line-globe-1.png)
+![Orbit & Draw](assets/orbit-draw-1.gif)
 
-<video src="assets/line-globe.mp4" autoplay muted loop></video>
+![Zoom](assets/zoom-1.gif)
+
+The ml5 model gets a bit jittery when there are too many things going on in the frame. This greatly affects the drawing experience as continuity is crucial to gestural control. If I'm moving forward with this idea, I need to switch to a different web model, or go native.
+
+<video src="assets/line-globe-with-gestures-optimised.mp4" autoplay muted loop></video>
 
 ## Fun quote from reading
