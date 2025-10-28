@@ -1,5 +1,5 @@
-const WIDTH = 800;
-const HEIGHT = 600;
+const WIDTH = 400;
+const HEIGHT = 300;
 let drawables = [];
 let graphics3D; // 3D graphics buffer
 
@@ -7,16 +7,34 @@ let graphics3D; // 3D graphics buffer
 let orbitX = 0;
 let orbitY = 0;
 let orbitRadius = 200;
-let isMousePressed = false;
-let lastMouseX = 0;
-let lastMouseY = 0;
 
 let video;
+const VIDEO_WIDTH = 640;
+const VIDEO_HEIGHT = 480;
 let handPose;
-let hands = [];
-const PINCH_THRESHOLD = 10;
+let leftHand = null;
+let rightHand = null;
+const HAND_SIZE_THRESHOLD = 30; // WRIST TO MIDDLE FINGER MCP DISTANCE
+const PINCH_THRESHOLD = 40; // Distance threshold for pinch detection
+const HAND_CONFIDENCE_THRESHOLD = 0.5;
 
-const MAX_LIFE = 3000;
+let isRightPinching = false;
+let isLeftPinching = false;
+let leftPinchStartX = 0;
+let leftPinchStartY = 0;
+let leftPinchStartOrbitX = 0;
+let leftPinchStartOrbitY = 0;
+
+let isBothFisting = false;
+let bothFistStartDistance = 0;
+let bothFistStartOrbitRadius = 0;
+
+const FOV = 120;
+const aspectRatio = WIDTH / HEIGHT;
+const nearPlane = 0.05;
+const farPlane = 1000;
+
+const MAX_LIFE = 1000;
 const LIFE_TO_ALPHA = 255 / MAX_LIFE;
 
 class Drawable {
@@ -153,32 +171,79 @@ function preload() {
 }
 
 function gotHands(results) {
-  hands = results;
-  console.log(hands);
+  leftHand = null;
+  rightHand = null;
+
+  for (let result of results) {
+    const handSize = getHandSize(result);
+    if (
+      result.handedness === 'Left' && // selfie camera is flipped, so we need to check for left hand
+      result.confidence > HAND_CONFIDENCE_THRESHOLD &&
+      result.keypoints.length > 0 &&
+      result.thumb_tip &&
+      result.index_finger_tip &&
+      result.middle_finger_mcp &&
+      handSize > HAND_SIZE_THRESHOLD
+    ) {
+      result.isSpread = isHandSpreadUp(result);
+      result.isFist = isHandFist(result);
+      result.boundingBox = getHandBoundingBox(result);
+      result.handSize = handSize;
+      if (!rightHand) {
+        rightHand = result;
+      } else {
+        if (handSize > getHandSize(rightHand)) {
+          rightHand = result;
+        }
+      }
+    }
+    if (
+      result.handedness === 'Right' && // selfie camera is flipped, so we need to check for right hand
+      result.confidence > HAND_CONFIDENCE_THRESHOLD &&
+      result.keypoints.length > 0 &&
+      result.thumb_tip &&
+      result.index_finger_tip &&
+      result.middle_finger_mcp &&
+      handSize > HAND_SIZE_THRESHOLD
+    ) {
+      result.isSpread = isHandSpreadUp(result);
+      result.isFist = isHandFist(result);
+      result.boundingBox = getHandBoundingBox(result);
+      result.handSize = handSize;
+      if (!leftHand) {
+        leftHand = result;
+      } else {
+        if (handSize > getHandSize(leftHand)) {
+          leftHand = result;
+        }
+      }
+    }
+  }
 }
 
 function setup() {
   // Create main 2D canvas
-  let canvas = createCanvas(WIDTH, HEIGHT);
+  let canvas = createCanvas(WIDTH * 2, HEIGHT * 2);
   canvas.parent('canvas-container');
   canvas.style('cursor', 'crosshair');
 
   // Create 3D graphics buffer
   graphics3D = createGraphics(WIDTH, HEIGHT, WEBGL);
 
-  // We don't need to create a separate camera - we'll use graphics3D.camera() directly
-
   // Setup video capture for hand tracking
   video = createCapture(VIDEO);
-  video.size(640, 480);
+  video.size(VIDEO_WIDTH, VIDEO_HEIGHT);
   video.hide();
   handPose.detectStart(video, gotHands);
 }
 
 function draw() {
-  if (mouseIsPressed && mouseButton === LEFT) {
-    createDrawableAtMouse();
-  }
+  scale(2);
+
+  // Check for pinch gestures - right hand for orbit, left hand for drawing
+  checkOrbitRadius();
+  checkLeftHandOrbit();
+  checkRightHandDraw();
 
   // Clear main canvas
   background(0);
@@ -207,6 +272,8 @@ function draw() {
     0 // up vector
   );
 
+  graphics3D.perspective(FOV, aspectRatio, nearPlane, farPlane);
+
   // Draw all drawable objects in 3D graphics
   for (let drawable of drawables) {
     drawable.draw(frameCount, graphics3D);
@@ -224,43 +291,167 @@ function draw() {
   image(graphics3D, 0, 0);
 
   // Now draw 2D hand tracking on top
-  for (let i = 0; i < hands.length; i++) {
-    let hand = hands[i];
+  if (leftHand && !leftHand.isFist) {
+    push();
+    let thumbX = map(leftHand.thumb_tip.x, 0, video.width, WIDTH, 0);
+    let thumbY = map(leftHand.thumb_tip.y, 0, video.height, 0, HEIGHT);
+    let indexX = map(leftHand.index_finger_tip.x, 0, video.width, WIDTH, 0);
+    let indexY = map(leftHand.index_finger_tip.y, 0, video.height, 0, HEIGHT);
 
-    // The hand object has a 'keypoints' array with all 21 landmarks
-    if (hand.keypoints) {
-      for (let j = 0; j < hand.keypoints.length; j++) {
-        let landmark = hand.keypoints[j];
-        // Scale the landmark coordinates to match canvas size
-        let x = map(landmark.x, 0, video.width, 0, WIDTH);
-        let y = map(landmark.y, 0, video.height, 0, HEIGHT);
+    let distance = dist(thumbX, thumbY, indexX, indexY);
+    let alpha = map(distance, PINCH_THRESHOLD, 200, 255, 0);
 
-        push();
-        fill(255, 0, 0);
-        noStroke();
-        ellipse(x, y, 10, 10);
-        pop();
+    fill(255, 255, 255, alpha);
+    ellipse(thumbX, thumbY, 5, 5);
+    ellipse(indexX, indexY, 5, 5);
+    stroke(255, 255, 255, alpha);
+    strokeWeight(2);
+    line(thumbX, thumbY, indexX, indexY);
+
+    if (isLeftPinching) {
+      let midX = (thumbX + indexX) / 2;
+      let midY = (thumbY + indexY) / 2;
+      let dirX = indexX - thumbX;
+      let dirY = indexY - thumbY;
+      // Normalize direction vector
+      let len = sqrt(dirX * dirX + dirY * dirY);
+      if (len > 0.01) {
+        let perpX = -dirY / len;
+        let perpY = dirX / len;
+        let crosshairLength = 20; // pixels
+        let crossX1 = midX + (perpX * crosshairLength) / 2;
+        let crossY1 = midY + (perpY * crosshairLength) / 2;
+        let crossX2 = midX - (perpX * crosshairLength) / 2;
+        let crossY2 = midY - (perpY * crosshairLength) / 2;
+        stroke(255, 255, 255, alpha);
+        strokeWeight(2);
+        line(crossX1, crossY1, crossX2, crossY2);
       }
     }
-
-    // Optionally, draw connections between keypoints to show the hand skeleton
-    // You can also access individual landmarks like hand.wrist, hand.thumb_tip, etc.
+    pop();
   }
+  if (rightHand && !rightHand.isFist) {
+    let thumbX = map(rightHand.thumb_tip.x, 0, video.width, WIDTH, 0);
+    let thumbY = map(rightHand.thumb_tip.y, 0, video.height, 0, HEIGHT);
+    let indexX = map(rightHand.index_finger_tip.x, 0, video.width, WIDTH, 0);
+    let indexY = map(rightHand.index_finger_tip.y, 0, video.height, 0, HEIGHT);
+
+    push();
+    let distance = dist(thumbX, thumbY, indexX, indexY);
+    let alpha = map(distance, PINCH_THRESHOLD, 200, 255, 0);
+    fill(255, 255, 255, alpha);
+    ellipse(thumbX, thumbY, 5, 5);
+    ellipse(indexX, indexY, 5, 5);
+    stroke(255, 255, 255, alpha);
+    strokeWeight(2);
+    line(thumbX, thumbY, indexX, indexY);
+
+    if (isRightPinching) {
+      let midX = (thumbX + indexX) / 2;
+      let midY = (thumbY + indexY) / 2;
+      let dirX = indexX - thumbX;
+      let dirY = indexY - thumbY;
+      let len = sqrt(dirX * dirX + dirY * dirY);
+      if (len > 0.01) {
+        let perpX = -dirY / len;
+        let perpY = dirX / len;
+        let crosshairLength = 20; // pixels
+        let crossX1 = midX + (perpX * crosshairLength) / 2;
+        let crossY1 = midY + (perpY * crosshairLength) / 2;
+        let crossX2 = midX - (perpX * crosshairLength) / 2;
+        let crossY2 = midY - (perpY * crosshairLength) / 2;
+        stroke(255, 255, 255, alpha);
+        strokeWeight(2);
+        line(crossX1, crossY1, crossX2, crossY2);
+      }
+    }
+    pop();
+  }
+
+  if (leftHand && rightHand && leftHand.isFist && rightHand.isFist) {
+    // Draw left hand fist circle
+    let leftHandFistCircleX = map(
+      leftHand.boundingBox.centerX,
+      0,
+      video.width,
+      WIDTH,
+      0
+    );
+    let leftHandFistCircleY = map(
+      leftHand.boundingBox.centerY,
+      0,
+      video.height,
+      0,
+      HEIGHT
+    );
+    let leftHandFistCircleRadius = map(
+      leftHand.boundingBox.radius,
+      0,
+      video.width,
+      0,
+      WIDTH
+    );
+    noFill();
+    stroke(255, 255, 255, 100);
+    strokeWeight(3);
+    ellipse(
+      leftHandFistCircleX,
+      leftHandFistCircleY,
+      leftHandFistCircleRadius * 2,
+      leftHandFistCircleRadius * 2
+    );
+    // Draw right hand fist circle
+    let rightHandFistCircleX = map(
+      rightHand.boundingBox.centerX,
+      0,
+      video.width,
+      WIDTH,
+      0
+    );
+    let rightHandFistCircleY = map(
+      rightHand.boundingBox.centerY,
+      0,
+      video.height,
+      0,
+      HEIGHT
+    );
+    let rightHandFistCircleRadius = map(
+      rightHand.boundingBox.radius,
+      0,
+      video.width,
+      0,
+      WIDTH
+    );
+    noFill();
+    stroke(255, 255, 255, 100);
+    strokeWeight(3);
+    ellipse(
+      rightHandFistCircleX,
+      rightHandFistCircleY,
+      rightHandFistCircleRadius * 2,
+      rightHandFistCircleRadius * 2
+    );
+
+    // Draw line between left and right hand fist circles
+    stroke(255, 255, 255, 100);
+    strokeWeight(3);
+    line(
+      leftHandFistCircleX,
+      leftHandFistCircleY,
+      rightHandFistCircleX,
+      rightHandFistCircleY
+    );
+  }
+
+  push();
+  tint(255, 40);
+  translate(WIDTH, 0);
+  scale(-1, 1);
+  image(video, 0, 0, WIDTH, HEIGHT);
+  pop();
 }
 
-function mousePressed() {
-  // Left click to create object
-
-  // Right click for orbit control
-  if (mouseButton === RIGHT) {
-    isMousePressed = true;
-    lastMouseX = mouseX;
-    lastMouseY = mouseY;
-    return false; // Prevent default right-click context menu
-  }
-}
-
-function createDrawableAtMouse() {
+function createDrawableAtPosition(screenX, screenY) {
   // Get current eye position
   const eyePosition = {
     x: orbitRadius * cos(orbitY) * sin(orbitX),
@@ -291,8 +482,8 @@ function createDrawableAtMouse() {
   // Use the abstracted raycast function
   // Get the current camera from graphics3D
   let intersection = raycastToPlane(
-    mouseX,
-    mouseY,
+    screenX,
+    screenY,
     graphics3D.width,
     graphics3D.height,
     graphics3D._renderer._curCamera,
@@ -319,34 +510,86 @@ function createDrawableAtMouse() {
   );
 }
 
-function mouseReleased() {
-  // Only stop orbiting if right mouse button was released
-  if (mouseButton === RIGHT) {
-    isMousePressed = false;
-    return false; // Prevent default right-click context menu
+function checkLeftHandOrbit() {
+  // Look for right hand for orbit control
+  if (leftHand) {
+    // Calculate distance between thumb tip and index finger tip
+    let thumbX = map(leftHand.thumb_tip.x, 0, video.width, WIDTH, 0); // FLIPPED
+    let thumbY = map(leftHand.thumb_tip.y, 0, video.height, 0, HEIGHT);
+    let thumbZ = leftHand.thumb_tip.z3D;
+    let indexX = map(leftHand.index_finger_tip.x, 0, video.width, WIDTH, 0); // FLIPPED
+    let indexY = map(leftHand.index_finger_tip.y, 0, video.height, 0, HEIGHT);
+    let indexZ = leftHand.index_finger_tip.z3D;
+
+    let distance = dist(thumbX, thumbY, indexX, indexY);
+    let centerX = (indexX + thumbX) / 2;
+    let centerY = (indexY + thumbY) / 2;
+    let centerZ = (indexZ + thumbZ) / 2;
+
+    if (distance < PINCH_THRESHOLD && !leftHand.isFist) {
+      if (!isLeftPinching) {
+        isLeftPinching = true;
+        leftPinchStartX = centerX;
+        leftPinchStartY = centerY;
+        leftPinchStartZ = centerZ;
+        leftPinchStartOrbitX = orbitX;
+        leftPinchStartOrbitY = orbitY;
+        leftPinchStartOrbitRadius = orbitRadius;
+      } else {
+        let deltaX = centerX - leftPinchStartX;
+        let deltaY = centerY - leftPinchStartY;
+
+        orbitX = lerp(orbitX, leftPinchStartOrbitX - deltaX * 0.01, 0.1);
+        orbitY = lerp(orbitY, leftPinchStartOrbitY - deltaY * 0.01, 0.1);
+
+        // Constrain orbitY to prevent camera flipping
+        orbitY = constrain(orbitY, -PI / 2 + 0.1, PI / 2 - 0.1);
+      }
+      return; // Found a pinching left hand
+    }
   }
+
+  // No pinching detected - reset state
+  isLeftPinching = false;
 }
 
-function mouseDragged() {
-  if (isMousePressed) {
-    let deltaX = mouseX - lastMouseX;
-    let deltaY = mouseY - lastMouseY;
+function checkRightHandDraw() {
+  if (rightHand) {
+    let thumbX = map(rightHand.thumb_tip.x, 0, video.width, WIDTH, 0); // FLIPPED
+    let thumbY = map(rightHand.thumb_tip.y, 0, video.height, 0, HEIGHT);
+    let indexX = map(rightHand.index_finger_tip.x, 0, video.width, WIDTH, 0); // FLIPPED
+    let indexY = map(rightHand.index_finger_tip.y, 0, video.height, 0, HEIGHT);
 
-    // Update orbit angles based on mouse movement (flipped to match expected behavior)
-    orbitX -= deltaX * 0.01;
-    orbitY -= deltaY * 0.01;
+    let distance = dist(thumbX, thumbY, indexX, indexY);
+    let centerX = (indexX + thumbX) / 2;
+    let centerY = (indexY + thumbY) / 2;
 
-    // Constrain orbitY to prevent camera flipping
-    orbitY = constrain(orbitY, -PI / 2 + 0.1, PI / 2 - 0.1);
-
-    lastMouseX = mouseX;
-    lastMouseY = mouseY;
+    if (distance < PINCH_THRESHOLD && !rightHand.isFist) {
+      isRightPinching = true;
+      createDrawableAtPosition(centerX, centerY);
+      return;
+    }
   }
+  isRightPinching = false;
 }
 
-// Mouse wheel for zooming
-function mouseWheel(event) {
-  orbitRadius += event.delta * 0.5;
-  orbitRadius = constrain(orbitRadius, 50, 500);
-  return false; // Prevent default scrolling
+function checkOrbitRadius() {
+  if (leftHand && rightHand && leftHand.isFist && rightHand.isFist) {
+    let bothFistDistance = dist(
+      leftHand.boundingBox.centerX,
+      leftHand.boundingBox.centerY,
+      rightHand.boundingBox.centerX,
+      rightHand.boundingBox.centerY
+    );
+    if (!isBothFisting) {
+      isBothFisting = true;
+      bothFistStartDistance = bothFistDistance;
+      bothFistStartOrbitRadius = orbitRadius;
+    } else {
+      let deltaDistance = bothFistDistance - bothFistStartDistance;
+      let deltaRadiusSpeed = deltaDistance * 1;
+      orbitRadius = lerp(orbitRadius, orbitRadius - deltaRadiusSpeed, 0.01);
+      orbitRadius = constrain(orbitRadius, 50, 500);
+    }
+  }
 }

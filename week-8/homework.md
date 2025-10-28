@@ -6,4 +6,18 @@ Use an image or video as input to make a drawing (using computer vision) or Crea
 
 ## Ideas
 
+I really loved my last homework, so I'm going to extend it with some ml5 CV stuff. I picked the hand pose detection model that gives you the keypoints of the hand at each joint. The original control I had was Orbit X&Y, Zoom, and Draw X&Y from mouse inputs. Now I'm replacing the mouse inputs with hand gestures, which allows for more natural, intuitive, and concurrent control.
+
+After some experimentation, I made the following mapping:
+
+- Left hand pinch and move to orbit
+- Right hand pinch and move to draw
+- Both hands fist and move closer or farther to zoom
+
+Here's the [live link](https://yz3440.github.io/drawing-plus-plus/week-8/homework/v1).
+
+![Screenshot](assets/line-globe-1.png)
+
+<video src="assets/line-globe.mp4" autoplay muted loop></video>
+
 ## Fun quote from reading

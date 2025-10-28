@@ -275,3 +275,239 @@ function raycastToPlane(
     z: rayOrigin.z + t * rayDir.z,
   };
 }
+
+function getHandSize(hand) {
+  return getHandBoundingBox(hand).radius;
+}
+
+function isHandSpreadUp(hand) {
+  // Check if hand has all required landmarks
+  if (
+    !hand ||
+    !hand.wrist ||
+    !hand.middle_finger_tip ||
+    !hand.middle_finger_mcp ||
+    !hand.index_finger_tip ||
+    !hand.ring_finger_tip ||
+    !hand.pinky_finger_tip ||
+    !hand.thumb_tip
+  ) {
+    return false;
+  }
+
+  // 1. Check if middle finger is pointing roughly upward
+  // Calculate the vector from MCP to tip of middle finger
+  let middleVectorX = hand.middle_finger_tip.x - hand.middle_finger_mcp.x;
+  let middleVectorY = hand.middle_finger_tip.y - hand.middle_finger_mcp.y;
+
+  // Normalize the vector
+  let middleLength = sqrt(
+    middleVectorX * middleVectorX + middleVectorY * middleVectorY
+  );
+  if (middleLength < 10) return false; // Finger too short/bent
+
+  middleVectorX /= middleLength;
+  middleVectorY /= middleLength;
+
+  // Check if pointing upward (negative Y in screen coordinates)
+  // Allow up to 45 degrees deviation from vertical
+  let upwardness = -middleVectorY; // Negative because Y increases downward
+  if (upwardness < 0.7) return false; // cos(45°) ≈ 0.7
+
+  // 2. Check if fingers are spread out
+  // Measure distances between adjacent fingertips
+  let indexToMiddle = dist(
+    hand.index_finger_tip.x,
+    hand.index_finger_tip.y,
+    hand.middle_finger_tip.x,
+    hand.middle_finger_tip.y
+  );
+
+  let middleToRing = dist(
+    hand.middle_finger_tip.x,
+    hand.middle_finger_tip.y,
+    hand.ring_finger_tip.x,
+    hand.ring_finger_tip.y
+  );
+
+  let ringToPinky = dist(
+    hand.ring_finger_tip.x,
+    hand.ring_finger_tip.y,
+    hand.pinky_finger_tip.x,
+    hand.pinky_finger_tip.y
+  );
+
+  // Get hand size for relative measurements
+  let handSize = getHandSize(hand);
+  let minSpread = handSize * 0.3; // Fingers should be at least 30% of hand size apart
+
+  // Check if all fingers are reasonably spread
+  if (
+    indexToMiddle < minSpread ||
+    middleToRing < minSpread ||
+    ringToPinky < minSpread
+  ) {
+    return false;
+  }
+
+  // 3. Check that all fingers are extended (not curled)
+  // Compare tip distances from wrist vs MCP distances from wrist
+  let middleExtension = dist(
+    hand.wrist.x,
+    hand.wrist.y,
+    hand.middle_finger_tip.x,
+    hand.middle_finger_tip.y
+  );
+  let indexExtension = dist(
+    hand.wrist.x,
+    hand.wrist.y,
+    hand.index_finger_tip.x,
+    hand.index_finger_tip.y
+  );
+  let ringExtension = dist(
+    hand.wrist.x,
+    hand.wrist.y,
+    hand.ring_finger_tip.x,
+    hand.ring_finger_tip.y
+  );
+  let pinkyExtension = dist(
+    hand.wrist.x,
+    hand.wrist.y,
+    hand.pinky_finger_tip.x,
+    hand.pinky_finger_tip.y
+  );
+
+  let minExtension = handSize * 1.5; // Fingers should extend at least 1.5x the palm size
+
+  if (
+    middleExtension < minExtension ||
+    indexExtension < minExtension ||
+    ringExtension < minExtension ||
+    pinkyExtension < minExtension
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function isHandFist(hand) {
+  // Check if hand has all required landmarks
+  if (hand.isSpread) {
+    return false;
+  }
+  if (
+    !hand ||
+    !hand.wrist ||
+    !hand.middle_finger_tip ||
+    !hand.middle_finger_mcp ||
+    !hand.index_finger_tip ||
+    !hand.ring_finger_tip ||
+    !hand.pinky_finger_tip ||
+    !hand.thumb_tip
+  ) {
+    return true;
+  }
+
+  // 2. Check if fingers are spread out
+  // Measure distances between adjacent fingertips
+  let indexToMiddle = dist(
+    hand.index_finger_tip.x,
+    hand.index_finger_tip.y,
+    hand.middle_finger_tip.x,
+    hand.middle_finger_tip.y
+  );
+
+  let middleToRing = dist(
+    hand.middle_finger_tip.x,
+    hand.middle_finger_tip.y,
+    hand.ring_finger_tip.x,
+    hand.ring_finger_tip.y
+  );
+
+  let ringToPinky = dist(
+    hand.ring_finger_tip.x,
+    hand.ring_finger_tip.y,
+    hand.pinky_finger_tip.x,
+    hand.pinky_finger_tip.y
+  );
+
+  // Get hand size for relative measurements
+  let handSize = getHandSize(hand);
+  let minSpread = handSize * 0.3; // Fingers should be at least 30% of hand size apart
+
+  // Check if all fingers are reasonably spread
+  if (
+    indexToMiddle < minSpread &&
+    middleToRing < minSpread &&
+    ringToPinky < minSpread
+  ) {
+    return true;
+  }
+
+  // 3. Check that all fingers are extended (not curled)
+  // Compare tip distances from wrist vs MCP distances from wrist
+  let middleExtension = dist(
+    hand.wrist.x,
+    hand.wrist.y,
+    hand.middle_finger_tip.x,
+    hand.middle_finger_tip.y
+  );
+  let indexExtension = dist(
+    hand.wrist.x,
+    hand.wrist.y,
+    hand.index_finger_tip.x,
+    hand.index_finger_tip.y
+  );
+  let ringExtension = dist(
+    hand.wrist.x,
+    hand.wrist.y,
+    hand.ring_finger_tip.x,
+    hand.ring_finger_tip.y
+  );
+  let pinkyExtension = dist(
+    hand.wrist.x,
+    hand.wrist.y,
+    hand.pinky_finger_tip.x,
+    hand.pinky_finger_tip.y
+  );
+
+  let minExtension = handSize * 1.5; // Fingers should extend at least 1.5x the palm size
+
+  if (
+    middleExtension < minExtension &&
+    indexExtension < minExtension &&
+    ringExtension < minExtension &&
+    pinkyExtension < minExtension
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function getHandBoundingBox(hand) {
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  for (let landmark of hand.keypoints) {
+    minX = Math.min(minX, landmark.x);
+    maxX = Math.max(maxX, landmark.x);
+    minY = Math.min(minY, landmark.y);
+    maxY = Math.max(maxY, landmark.y);
+  }
+
+  return {
+    minX: minX,
+    maxX: maxX,
+    minY: minY,
+    maxY: maxY,
+    width: maxX - minX,
+    height: maxY - minY,
+    centerX: (minX + maxX) / 2,
+    centerY: (minY + maxY) / 2,
+    radius: dist(minX, minY, maxX, maxY) / 2,
+  };
+}
