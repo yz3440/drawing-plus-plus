@@ -24,3 +24,7 @@ Here's the [live link](https://yz3440.github.io/drawing-plus-plus/week-6/homewor
 ![Screenshot](assets/line-globe-1.png)
 
 <video src="assets/line-globe.mp4" autoplay muted loop></video>
+
+## Fun quote from reading
+
+> My professor asked me a question that I still think about when I see an art and tech project: “Is this an art project or a tech demo?”
