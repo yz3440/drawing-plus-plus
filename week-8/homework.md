@@ -6,7 +6,7 @@ Use an image or video as input to make a drawing (using computer vision) or Crea
 
 ## Ideas
 
-I really loved my last homework, so I'm going to extend it with some ml5 CV stuff. I picked the hand pose detection model that gives you the keypoints of the hand at each joint. The original control I had was Orbit X&Y, Zoom, and Draw X&Y from mouse inputs. Now I'm replacing the mouse inputs with hand gestures, which allows for more natural, intuitive, and concurrent control.
+I really love my last homework for drawing, so I'm going to extend it with some ml5 CV stuff. I picked the hand pose detection model that gives you the keypoints of the hand at each joint. The original control I had was Orbit X&Y, Zoom, and Draw X&Y from mouse inputs. Now I'm replacing the mouse inputs with hand gestures, which allows for more natural, intuitive, and concurrent control.
 
 After some experimentation, I made the following mapping:
 
@@ -25,3 +25,12 @@ The ml5 model gets a bit jittery when there are too many things going on in the 
 <video src="assets/line-globe-with-gestures-optimised.mp4" autoplay muted loop></video>
 
 ## Fun quote from reading
+
+> A viewer who looks at a drawing focuses on the artist, but a viewer at a live event
+> focuses on the performance. Looking at a drawing is trying to look into the mind of
+> the artist.
+> Where does the drawing begin and where does it end? What is it one sees
+> in the intersection of performance and drawing, which is by nature process-oriented,
+> experimental?
+>
+> - Bonnie Marranca, Work on Paper
