@@ -29,7 +29,9 @@ class Pie {
   }
 
   draw() {
-    const lerpFactor = 0.2;
+    const rotationLerpFactor = 0.05;
+    const scaleLerpFactor = 0.2;
+    const translationLerpFactor = 0.1;
 
     // push();
     // stroke(255);
@@ -44,18 +46,18 @@ class Pie {
       drawing.rotation = lerp(
         drawing.rotation,
         ensureWithinPi(-drawing.startAngle - drawing.initialRotation),
-        lerpFactor
+        rotationLerpFactor
       );
-      drawing.scale = lerp(drawing.scale, this.scale, lerpFactor);
+      drawing.scale = lerp(drawing.scale, this.scale, scaleLerpFactor);
       drawing.shapeTranslationX = lerp(
         drawing.shapeTranslationX,
         this.x,
-        lerpFactor * 0.2
+        translationLerpFactor
       );
       drawing.shapeTranslationY = lerp(
         drawing.shapeTranslationY,
         this.y,
-        lerpFactor * 0.2
+        translationLerpFactor
       );
       drawing.draw();
     }
@@ -305,6 +307,13 @@ function draw() {
   background(0);
   cursor(CROSS);
 
+  const allPies = [...pies, currentPie].filter((pie) => pie !== null);
+  for (let pie of allPies) {
+    pie.draw();
+  }
+
+  background(0, 0, 0, 100);
+
   const allDrawings = [...drawings, currentDrawing].filter(
     (drawing) => drawing !== null
   );
@@ -318,11 +327,6 @@ function draw() {
     .forEach((drawing) => {
       drawings.splice(drawings.indexOf(drawing), 1);
     });
-
-  const allPies = [...pies, currentPie].filter((pie) => pie !== null);
-  for (let pie of allPies) {
-    pie.draw();
-  }
 }
 
 /*
