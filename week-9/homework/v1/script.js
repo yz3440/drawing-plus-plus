@@ -39,6 +39,7 @@ class Pie {
     // rotate(-this.occupiedAngle);
     // line(0, 0, 100, 0);
     // pop();
+
     for (let drawing of this.drawings) {
       drawing.rotation = lerp(
         drawing.rotation,
@@ -169,6 +170,7 @@ class Drawing {
           (i + 1) % this.simplifiedTrianglePoints.length
         ];
       const angle = getPositiveAngleFromThreePoints(p, p1, p2);
+      console.log('angle', (angle * 180) / Math.PI);
       if (angle < this.smallestAngle) {
         this.smallestAngle = angle;
         this.smallestAngleTipPoint = p;

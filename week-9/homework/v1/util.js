@@ -397,7 +397,11 @@ function convexHull(points) {
 }
 
 function getPositiveAngleFromThreePoints(p, p1, p2) {
-  return Math.abs(getAngleFromThreePoints(p, p1, p2));
+  let angle = Math.abs(getAngleFromThreePoints(p, p1, p2));
+  if (angle > Math.PI) {
+    angle = 2 * Math.PI - angle;
+  }
+  return angle;
 }
 
 function getAngleFromThreePoints(p, p1, p2) {
@@ -415,10 +419,10 @@ function getAngle(p1, p2) {
 
 function ensureWithinPi(angle) {
   if (angle > Math.PI) {
-    ensureWithinPi(angle - 2 * Math.PI);
+    return ensureWithinPi(angle - 2 * Math.PI);
   }
   if (angle <= -Math.PI) {
-    ensureWithinPi(angle + 2 * Math.PI);
+    return ensureWithinPi(angle + 2 * Math.PI);
   }
   return angle;
 }
