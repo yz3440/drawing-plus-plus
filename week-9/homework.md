@@ -11,7 +11,9 @@ I want to build a tool to detect triangle-esque shapes and put them in a pizza. 
 - user draws an arbitrary polyline
 - extract the **first polygon** from the polyline
 - compute the **convex hull** of the **first polygon**
-- simplify the **convex hull** down to 3 points, a **triangle** (using Douglas-Peucker algorithm with progressive tolerance)
+- simplify the **convex hull** down to 3 points, a **triangle**
+  - using Douglas-Peucker algorithm with progressive tolerance
+  - that is, iteratively simplify the polygon with increasing tolerance until it has 3 points
 - compare the area of the **convex hull** and the area of the **triangle**
   - if the ratio is greater than a threshold, the shape is a triangle
   - if the ratio is less than a threshold, the shape is not a triangle
