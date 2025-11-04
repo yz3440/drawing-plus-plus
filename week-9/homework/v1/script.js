@@ -247,44 +247,44 @@ class Drawing {
       pop();
     }
 
-    // if (this.simplifiedPoints) {
-    //   for (let i = 0; i < this.simplifiedPoints.length - 1; i++) {
-    //     push();
-    //     noFill();
-    //     stroke(255, 0, 0);
-    //     line(
-    //       this.simplifiedPoints[i].x,
-    //       this.simplifiedPoints[i].y,
-    //       this.simplifiedPoints[i + 1].x,
-    //       this.simplifiedPoints[i + 1].y
-    //     );
-    //     pop();
-    //   }
-    // }
-    // if (this.simplifiedTrianglePoints) {
-    //   push();
-    //   if (this.isTriangle) {
-    //     fill(0, 255, 0, 2);
-    //   } else {
-    //     noFill();
-    //   }
-    //   stroke(0, 255, 0, 100);
-    //   beginShape();
-    //   for (let i = 0; i < this.simplifiedTrianglePoints.length; i++) {
-    //     // text(
-    //     //   i,
-    //     //   this.simplifiedTrianglePoints[i].x,
-    //     //   this.simplifiedTrianglePoints[i].y
-    //     // );
-    //     vertex(
-    //       this.simplifiedTrianglePoints[i].x,
-    //       this.simplifiedTrianglePoints[i].y
-    //     );
-    //   }
-    //   endShape(CLOSE);
+    if (this.simplifiedPoints) {
+      for (let i = 0; i < this.simplifiedPoints.length - 1; i++) {
+        push();
+        noFill();
+        stroke(255, 0, 0);
+        line(
+          this.simplifiedPoints[i].x,
+          this.simplifiedPoints[i].y,
+          this.simplifiedPoints[i + 1].x,
+          this.simplifiedPoints[i + 1].y
+        );
+        pop();
+      }
+    }
+    if (this.simplifiedTrianglePoints) {
+      push();
+      if (this.isTriangle) {
+        fill(0, 255, 0, 100);
+      } else {
+        noFill();
+      }
+      stroke(0, 255, 0, 100);
+      beginShape();
+      for (let i = 0; i < this.simplifiedTrianglePoints.length; i++) {
+        // text(
+        //   i,
+        //   this.simplifiedTrianglePoints[i].x,
+        //   this.simplifiedTrianglePoints[i].y
+        // );
+        vertex(
+          this.simplifiedTrianglePoints[i].x,
+          this.simplifiedTrianglePoints[i].y
+        );
+      }
+      endShape(CLOSE);
 
-    //   pop();
-    // }
+      pop();
+    }
     pop();
   }
 
