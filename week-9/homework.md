@@ -1,4 +1,4 @@
-# Week 8 Homework
+# Week 9 Homework
 
 ## Homework Prompt
 
@@ -32,3 +32,7 @@ Here's me trying to form an actual pizza:
 
 Here's me messing around:
 ![messing around demo](assets/pizza-2.gif)
+
+## Fun quote from reading
+
+> Qualitative results show that subjects liked “pigtail”,“check”, and “v”, all fairly quick gestures. They disliked the curly braces and “question_mark”.
