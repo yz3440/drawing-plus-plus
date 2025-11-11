@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Horizon Generator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- P5.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <!-- TensorFlow.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+  </head>
+  <body
+    class="bg-black text-white min-h-screen flex items-center justify-center flex-col"
+  >
+    <div class="text-center">
+      <div class="p-2 border-2 border-white/20 bg-neutral-900/20">
+        <div class="p-2 border-2 border-white/40 bg-neutral-900/20">
+          <div class="p-2 border-2 border-white/60 bg-neutral-800/20">
+            <div class="p-2 border-2 border-white/80 bg-neutral-800/20">
+              <div class="overflow-hidden border-2 border-white">
+                <!-- The p5.js canvas will be automatically inserted here -->
+                <div id="canvas-container"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Link to your p5.js script -->
+    <script src="script.js"></script>
+  </body>
+</html>

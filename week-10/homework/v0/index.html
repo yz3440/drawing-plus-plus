@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Horizon Generator</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background: #f0f0f0;
+      }
+      .container {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .canvas-container {
+        display: flex;
+        gap: 20px;
+        justify-content: center;
+        margin: 20px 0;
+        flex-wrap: wrap;
+      }
+      canvas {
+        border: 2px solid #ddd;
+        border-radius: 5px;
+        cursor: crosshair;
+        background: white;
+      }
+      .controls {
+        text-align: center;
+        margin: 20px 0;
+      }
+      button {
+        background: #4caf50;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        margin: 0 5px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+      }
+      button:hover {
+        background: #45a049;
+      }
+      button:disabled {
+        background: #cccccc;
+        cursor: not-allowed;
+      }
+      .status {
+        text-align: center;
+        margin: 10px 0;
+        font-style: italic;
+      }
+      .loading {
+        color: #2196f3;
+      }
+      .error {
+        color: #f44336;
+      }
+      .success {
+        color: #4caf50;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1 style="text-align: center">🌅 Horizon Generator</h1>
+      <p style="text-align: center">
+        Draw edges to generate a horizon landscape!
+      </p>
+
+      <div class="status" id="status">Loading model...</div>
+
+      <div class="canvas-container">
+        <div>
+          <h3>Draw Edges Here</h3>
+          <canvas id="inputCanvas" width="256" height="256"></canvas>
+        </div>
+        <div>
+          <h3>Generated Horizon</h3>
+          <canvas id="outputCanvas" width="256" height="256"></canvas>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="clearBtn" onclick="clearCanvas()">Clear</button>
+        <button id="generateBtn" onclick="generate()" disabled>Generate</button>
+        <button id="downloadBtn" onclick="downloadImage()" disabled>
+          Download
+        </button>
+        <button id="randomBtn" onclick="drawRandomEdges()">Random Edges</button>
+      </div>
+
+      <div style="text-align: center; margin-top: 20px">
+        <label>
+          Brush Size:
+          <input type="range" id="brushSize" min="1" max="10" value="2" />
+          <span id="brushSizeLabel">2</span>
+        </label>
+      </div>
+    </div>
+
+    <script>
+      // Global variables
+      let generator;
+      let isDrawing = false;
+      let lastX = 0;
+      let lastY = 0;
+
+      const inputCanvas = document.getElementById('inputCanvas');
+      const outputCanvas = document.getElementById('outputCanvas');
+      const ctx = inputCanvas.getContext('2d');
+      const statusDiv = document.getElementById('status');
+      const generateBtn = document.getElementById('generateBtn');
+      const downloadBtn = document.getElementById('downloadBtn');
+      const brushSizeInput = document.getElementById('brushSize');
+      const brushSizeLabel = document.getElementById('brushSizeLabel');
+
+      // Initialize canvas
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, inputCanvas.width, inputCanvas.height);
+
+      // Brush size control
+      brushSizeInput.addEventListener('input', (e) => {
+        brushSizeLabel.textContent = e.target.value;
+      });
+
+      // Drawing functionality
+      inputCanvas.addEventListener('mousedown', startDrawing);
+      inputCanvas.addEventListener('mousemove', draw);
+      inputCanvas.addEventListener('mouseup', stopDrawing);
+      inputCanvas.addEventListener('mouseout', stopDrawing);
+
+      // Touch support for mobile
+      inputCanvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const rect = inputCanvas.getBoundingClientRect();
+        const mouseEvent = new MouseEvent('mousedown', {
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+        });
+        inputCanvas.dispatchEvent(mouseEvent);
+      });
+
+      inputCanvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const mouseEvent = new MouseEvent('mousemove', {
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+        });
+        inputCanvas.dispatchEvent(mouseEvent);
+      });
+
+      inputCanvas.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        inputCanvas.dispatchEvent(new MouseEvent('mouseup'));
+      });
+
+      function startDrawing(e) {
+        isDrawing = true;
+        const rect = inputCanvas.getBoundingClientRect();
+        lastX = e.clientX - rect.left;
+        lastY = e.clientY - rect.top;
+      }
+
+      function draw(e) {
+        if (!isDrawing) return;
+
+        const rect = inputCanvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(x, y);
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = brushSizeInput.value;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+
+        lastX = x;
+        lastY = y;
+      }
+
+      function stopDrawing() {
+        isDrawing = false;
+      }
+
+      function clearCanvas() {
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, inputCanvas.width, inputCanvas.height);
+
+        const outCtx = outputCanvas.getContext('2d');
+        outCtx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
+
+        downloadBtn.disabled = true;
+      }
+
+      function drawRandomEdges() {
+        clearCanvas();
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 2;
+
+        // Draw random curved lines
+        for (let i = 0; i < 3; i++) {
+          ctx.beginPath();
+          let x = Math.random() * 50;
+          let y = 100 + Math.random() * 56;
+          ctx.moveTo(x, y);
+
+          for (let j = 0; j < 5; j++) {
+            x += 40 + Math.random() * 20;
+            y += (Math.random() - 0.5) * 40;
+            y = Math.max(50, Math.min(206, y));
+            ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        }
+      }
+
+      function setStatus(message, className) {
+        statusDiv.textContent = message;
+        statusDiv.className = 'status ' + className;
+      }
+
+      // Model class
+      class HorizonGenerator {
+        constructor() {
+          this.model = null;
+        }
+
+        async loadModel(modelPath) {
+          try {
+            this.model = await tf.loadGraphModel(modelPath + '/model.json');
+            console.log('Model loaded:', this.model);
+            return true;
+          } catch (error) {
+            console.error('Failed to load model:', error);
+            return false;
+          }
+        }
+
+        async generate(inputCanvas, outputCanvas) {
+          if (!this.model) {
+            throw new Error('Model not loaded');
+          }
+
+          // Prepare input tensor
+          const input = tf.browser
+            .fromPixels(inputCanvas)
+            .resizeNearestNeighbor([256, 256])
+            .toFloat()
+            .div(127.5)
+            .sub(1)
+            .expandDims(0);
+
+          // Run inference
+          const startTime = performance.now();
+          const output = await this.model.predict(input);
+          const inferenceTime = performance.now() - startTime;
+
+          console.log(`Inference took ${inferenceTime.toFixed(2)}ms`);
+
+          // Post-process output
+          const generated = output
+            .squeeze()
+            .add(1)
+            .mul(127.5)
+            .clipByValue(0, 255)
+            .cast('int32');
+
+          // Draw to canvas
+          await tf.browser.toPixels(generated, outputCanvas);
+
+          // Cleanup tensors
+          input.dispose();
+          output.dispose();
+          generated.dispose();
+
+          return inferenceTime;
+        }
+      }
+
+      // Generate function
+      async function generate() {
+        if (!generator || !generator.model) {
+          setStatus('Model not loaded', 'error');
+          return;
+        }
+
+        try {
+          generateBtn.disabled = true;
+          setStatus('Generating...', 'loading');
+
+          const time = await generator.generate(inputCanvas, outputCanvas);
+
+          setStatus(`Generated in ${time.toFixed(0)}ms`, 'success');
+          generateBtn.disabled = false;
+          downloadBtn.disabled = false;
+        } catch (error) {
+          console.error('Generation error:', error);
+          setStatus('Generation failed', 'error');
+          generateBtn.disabled = false;
+        }
+      }
+
+      // Download function
+      function downloadImage() {
+        outputCanvas.toBlob((blob) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `horizon_${Date.now()}.png`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        });
+      }
+
+      // Initialize
+      async function init() {
+        generator = new HorizonGenerator();
+
+        try {
+          setStatus('Loading model...', 'loading');
+
+          // Update this path to your model location
+          const success = await generator.loadModel('../tfjs_horizon_model');
+
+          if (success) {
+            setStatus('Model loaded! Draw edges and click Generate', 'success');
+            generateBtn.disabled = false;
+
+            // Draw sample edges
+            drawRandomEdges();
+          } else {
+            setStatus('Failed to load model', 'error');
+          }
+        } catch (error) {
+          setStatus('Failed to load model', 'error');
+          console.error('Initialization error:', error);
+        }
+      }
+
+      // Start the app
+      init();
+    </script>
+  </body>
+</html>
