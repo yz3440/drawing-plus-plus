@@ -1,6 +1,6 @@
 // Canvas sizes
 const MODEL_SIZE = 256; // Internal processing size (model I/O)
-const DISPLAY_SIZE = 640; // Display canvas size
+const DISPLAY_SIZE = 480; // Display canvas size
 const SCALE_FACTOR = DISPLAY_SIZE / MODEL_SIZE; // Scale factor for display
 
 // Graphics buffers
@@ -132,7 +132,7 @@ function setup() {
 
 function draw() {
   // Clear main canvas
-  background(255);
+  background(0);
 
   // Calculate drawing opacity based on inactivity
   let timeSinceLastDraw = millis() - lastDrawTime;
@@ -165,7 +165,7 @@ function draw() {
   if (horizonOpacityA > 0) {
     push();
     if (debugMode) {
-      tint(255, Math.min(100, horizonOpacityA));
+      tint(255, Math.min(255, horizonOpacityA));
     } else {
       tint(255, horizonOpacityA);
     }
@@ -177,7 +177,7 @@ function draw() {
   if (horizonOpacityB > 0) {
     push();
     if (debugMode) {
-      tint(255, Math.min(100, horizonOpacityB));
+      tint(255, Math.min(255, horizonOpacityB));
     } else {
       tint(255, horizonOpacityB);
     }
@@ -214,8 +214,8 @@ function draw() {
     horizonOpacityB = targetOpacityB;
   }
 
-  // Draw current stroke if drawing (scale down coordinates)
-  if (isDrawing && frameCount > drawStartFrame) {
+  // Draw current stroke if drawing (scale down coordinates) and context menu is not open
+  if (isDrawing && !isContextMenuOpen && frameCount > drawStartFrame) {
     drawingGraphics.stroke(0);
     drawingGraphics.strokeWeight(brushSize);
     // Scale down mouse coordinates to model size
@@ -246,7 +246,15 @@ function draw() {
 }
 
 function mousePressed() {
-  if (mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
+  // Only respond to left mouse button and when context menu is not open
+  if (
+    mouseButton === LEFT &&
+    !isContextMenuOpen &&
+    mouseX >= 0 &&
+    mouseX <= width &&
+    mouseY >= 0 &&
+    mouseY <= height
+  ) {
     isDrawing = true;
     drawStartFrame = frameCount; // Record when drawing starts
     lastDrawTime = millis(); // Update last draw time
@@ -258,7 +266,7 @@ function mousePressed() {
 }
 
 function mouseDragged() {
-  if (isDrawing && frameCount > drawStartFrame) {
+  if (isDrawing && !isContextMenuOpen && frameCount > drawStartFrame) {
     drawingGraphics.stroke(0);
     drawingGraphics.strokeWeight(brushSize);
     // Scale down mouse coordinates to model size
@@ -283,7 +291,7 @@ function mouseReleased() {
       }
       generateTimeout = setTimeout(() => {
         generateHorizon();
-      }, 700);
+      }, 500);
     }
   }
 }
@@ -412,14 +420,37 @@ function keyPressed() {
   if (key === 'h' || key === 'H') {
     printInstructions();
   }
+
+  // Capture frame with 'F' key
+  if (key === 'f' || key === 'F') {
+    captureCurrentFrame();
+  }
+
+  // Play/stop animation with spacebar
+  if (key === ' ') {
+    toggleAnimation();
+    return false; // Prevent default spacebar behavior
+  }
+
+  // Clear all frames with 'X' key
+  if (key === 'x' || key === 'X') {
+    clearAllFrames();
+  }
 }
 
 function printInstructions() {
   console.log('%cDrawing Controls:', 'font-weight: bold; color: #2196F3');
   console.log('  • Click and drag to draw edges');
-  console.log('  • 1-5: Change brush size (1-5 pixels)');
+  console.log('  • 1-9, 0: Change brush size (1-10 pixels)');
   console.log('  • C: Clear canvas');
   console.log('  • R: Generate random edges');
+  console.log('');
+  console.log('%cAnimation Controls:', 'font-weight: bold; color: #2196F3');
+  console.log('  • F: Capture current frame');
+  console.log('  • X: Clear all frames');
+  console.log('  • Space: Play/Stop animation');
+  console.log('  • Click frame to delete it');
+  console.log('  • Auto-captures after each generation');
   console.log('');
   console.log('%cSave Options:', 'font-weight: bold; color: #2196F3');
   console.log('  • S: Save combined canvas');
@@ -559,6 +590,11 @@ async function generateHorizon() {
     activeHorizonBuffer = currentBuffer;
 
     isGenerating = false;
+
+    // Auto-capture the frame after successful generation
+    setTimeout(() => {
+      captureCurrentFrame(true);
+    }, 500); // Small delay to ensure the canvas is fully updated
   } catch (error) {
     console.error('❌ Generation error:', error);
     isGenerating = false;
@@ -681,6 +717,7 @@ function touchEnded() {
 let contextMenu = null;
 let brushSlider = null;
 let brushSizeValue = null;
+let isContextMenuOpen = false;
 
 // Initialize context menu after page loads
 window.addEventListener('DOMContentLoaded', () => {
@@ -734,6 +771,20 @@ window.addEventListener('DOMContentLoaded', () => {
       e.stopPropagation();
     });
   }
+
+  // Initialize animation controls
+  const captureBtn = document.getElementById('capture-btn');
+  const playBtn = document.getElementById('play-btn');
+
+  // Capture button handler
+  if (captureBtn) {
+    captureBtn.addEventListener('click', captureCurrentFrame);
+  }
+
+  // Play button handler
+  if (playBtn) {
+    playBtn.addEventListener('click', toggleAnimation);
+  }
 });
 
 function updateBrushSizeDisplay(size) {
@@ -750,6 +801,9 @@ function updateSliderBackground(slider) {
 
 function showContextMenu(x, y) {
   if (!contextMenu) return;
+
+  // Set menu open state
+  isContextMenuOpen = true;
 
   // Update slider to current brush size
   if (brushSlider) {
@@ -778,6 +832,7 @@ function showContextMenu(x, y) {
 function hideContextMenu() {
   if (contextMenu) {
     contextMenu.classList.add('hidden');
+    isContextMenuOpen = false;
   }
 }
 
@@ -839,4 +894,240 @@ function handleContextMenuAction(action) {
       console.log(`🐛 Debug mode: ${debugMode ? 'ON' : 'OFF'}`);
       break;
   }
+}
+
+// Animation System
+let capturedFrames = [];
+let currentFrameIndex = 0;
+let isPlaying = false;
+let animationInterval = null;
+let frameRate = 100; // milliseconds between frames
+
+function captureCurrentFrame(autoCapture = false) {
+  // Only capture if we have a generated horizon
+  if (!lastGeneratedCanvas) {
+    console.log('⚠️ No generated horizon to capture');
+    return;
+  }
+
+  // Convert the last generated horizon canvas to base64 image
+  const imageData = lastGeneratedCanvas.toDataURL('image/png');
+
+  // Store the frame
+  capturedFrames.push(imageData);
+
+  // Create thumbnail
+  const frameContainer = document.getElementById('frame-container');
+  const thumb = document.createElement('img');
+  thumb.src = imageData;
+  thumb.className = 'frame-thumb dropping'; // Add dropping animation class
+  thumb.style.height = '100%';
+  thumb.style.width = 'auto';
+  thumb.dataset.frameIndex = capturedFrames.length - 1;
+
+  // Add click handler to delete frame
+  thumb.addEventListener('click', (e) => {
+    deleteFrame(parseInt(e.target.dataset.frameIndex));
+  });
+
+  frameContainer.appendChild(thumb);
+
+  // Remove animation class after animation completes
+  setTimeout(() => {
+    thumb.classList.remove('dropping');
+  }, 600);
+
+  // Auto-scroll to show the new frame
+  frameContainer.scrollLeft = frameContainer.scrollWidth;
+
+  if (autoCapture) {
+    console.log(
+      `🎬 Auto-captured frame ${capturedFrames.length} after generation`
+    );
+  } else {
+    console.log(`📸 Frame captured! Total frames: ${capturedFrames.length}`);
+  }
+
+  // Enable play button if we have frames
+  const playBtn = document.getElementById('play-btn');
+  if (playBtn && capturedFrames.length > 1) {
+    playBtn.disabled = false;
+  }
+}
+
+function selectFrame(index) {
+  currentFrameIndex = index;
+
+  // Update active thumbnail
+  const thumbs = document.querySelectorAll('.frame-thumb');
+  thumbs.forEach((thumb, i) => {
+    if (i === index) {
+      thumb.classList.add('active');
+    } else {
+      thumb.classList.remove('active');
+    }
+  });
+
+  // Show frame on overlay if playing
+  if (isPlaying) {
+    showFrameOnOverlay(index);
+  }
+}
+
+function showFrameOnOverlay(index) {
+  const overlay = document.getElementById('animation-overlay');
+  if (overlay && capturedFrames[index]) {
+    overlay.src = capturedFrames[index];
+    overlay.style.display = 'block';
+  }
+}
+
+function hideOverlay() {
+  const overlay = document.getElementById('animation-overlay');
+  if (overlay) {
+    overlay.style.display = 'none';
+  }
+}
+
+function toggleAnimation() {
+  if (capturedFrames.length < 2) {
+    console.log('⚠️ Need at least 2 frames to animate');
+    return;
+  }
+
+  if (isPlaying) {
+    stopAnimation();
+  } else {
+    startAnimation();
+  }
+}
+
+function startAnimation() {
+  if (capturedFrames.length === 0) return;
+
+  isPlaying = true;
+  currentFrameIndex = 0;
+
+  // Update button
+  const playBtn = document.getElementById('play-btn');
+  const playIcon = document.getElementById('play-icon');
+  const stopIcon = document.getElementById('stop-icon');
+  const playBtnText = document.getElementById('play-btn-text');
+
+  if (playIcon) playIcon.style.display = 'none';
+  if (stopIcon) stopIcon.style.display = 'block';
+  if (playBtnText) playBtnText.textContent = 'Stop Animation';
+
+  // Start the animation loop
+  animationInterval = setInterval(() => {
+    showFrameOnOverlay(currentFrameIndex);
+    selectFrame(currentFrameIndex);
+
+    // Move to next frame
+    currentFrameIndex = (currentFrameIndex + 1) % capturedFrames.length;
+  }, frameRate);
+
+  console.log('▶️ Animation started');
+}
+
+function stopAnimation() {
+  isPlaying = false;
+
+  // Clear interval
+  if (animationInterval) {
+    clearInterval(animationInterval);
+    animationInterval = null;
+  }
+
+  // Hide overlay
+  hideOverlay();
+
+  // Update button
+  const playBtn = document.getElementById('play-btn');
+  const playIcon = document.getElementById('play-icon');
+  const stopIcon = document.getElementById('stop-icon');
+  const playBtnText = document.getElementById('play-btn-text');
+
+  if (playIcon) playIcon.style.display = 'block';
+  if (stopIcon) stopIcon.style.display = 'none';
+  if (playBtnText) playBtnText.textContent = 'Play Animation';
+
+  // Remove active state from thumbnails
+  const thumbs = document.querySelectorAll('.frame-thumb');
+  thumbs.forEach((thumb) => thumb.classList.remove('active'));
+
+  console.log('⏹️ Animation stopped');
+}
+
+function deleteFrame(index) {
+  // Stop animation if playing
+  if (isPlaying) {
+    stopAnimation();
+  }
+
+  // Remove the frame from the array
+  capturedFrames.splice(index, 1);
+
+  // Rebuild the frame container
+  const frameContainer = document.getElementById('frame-container');
+  if (frameContainer) {
+    frameContainer.innerHTML = '';
+
+    // Re-add all remaining frames
+    capturedFrames.forEach((frameData, i) => {
+      const thumb = document.createElement('img');
+      thumb.src = frameData;
+      thumb.className = 'frame-thumb';
+      thumb.style.height = '100%';
+      thumb.style.width = 'auto';
+      thumb.dataset.frameIndex = i;
+
+      // Add click handler to delete frame
+      thumb.addEventListener('click', (e) => {
+        deleteFrame(parseInt(e.target.dataset.frameIndex));
+      });
+
+      frameContainer.appendChild(thumb);
+    });
+  }
+
+  // Update current frame index if needed
+  if (currentFrameIndex >= capturedFrames.length) {
+    currentFrameIndex = 0;
+  }
+
+  // Disable play button if less than 2 frames
+  const playBtn = document.getElementById('play-btn');
+  if (playBtn && capturedFrames.length < 2) {
+    playBtn.disabled = true;
+  }
+
+  console.log(
+    `🗑️ Frame ${index + 1} deleted. Remaining frames: ${capturedFrames.length}`
+  );
+}
+
+function clearAllFrames() {
+  // Stop animation if playing
+  if (isPlaying) {
+    stopAnimation();
+  }
+
+  // Clear the frames array
+  capturedFrames = [];
+  currentFrameIndex = 0;
+
+  // Clear the frame container
+  const frameContainer = document.getElementById('frame-container');
+  if (frameContainer) {
+    frameContainer.innerHTML = '';
+  }
+
+  // Disable play button
+  const playBtn = document.getElementById('play-btn');
+  if (playBtn) {
+    playBtn.disabled = true;
+  }
+
+  console.log('🗑️ All frames cleared');
 }

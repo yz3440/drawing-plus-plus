@@ -193,7 +193,7 @@ function mouseReleased() {
       }
       generateTimeout = setTimeout(() => {
         generateHorizon();
-      }, 500);
+      }, 0);
     }
   }
 }
@@ -219,7 +219,7 @@ function keyPressed() {
     if (isModelLoaded && !isGenerating) {
       setTimeout(() => {
         generateHorizon();
-      }, 500);
+      }, 0);
     }
   }
 }
@@ -241,7 +241,7 @@ async function initModel() {
       // Generate initial horizon
       setTimeout(() => {
         generateHorizon();
-      }, 1000);
+      }, 100);
     }
   } catch (error) {
     console.error('Failed to initialize model:', error);

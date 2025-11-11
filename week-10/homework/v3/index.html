@@ -59,24 +59,166 @@
       input[type='range'].slider:hover::-moz-range-thumb {
         background: #e5e7eb;
       }
+
+      /* Frame thumbnails */
+      .frame-thumb {
+        display: inline-block;
+        height: 100%;
+        border: 2px solid transparent;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+      }
+
+      .frame-thumb:hover {
+        border-color: rgba(255, 50, 50, 0.8);
+        transform: scale(0.95);
+        filter: saturate(0%) brightness(0.5);
+      }
+
+      .frame-thumb:hover::after {
+        content: '×';
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        width: 20px;
+        height: 20px;
+        background: rgba(255, 50, 50, 0.9);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        font-weight: bold;
+        line-height: 1;
+      }
+
+      .frame-thumb.active {
+        border-color: white;
+      }
+
+      /* Dropping animation for new frames */
+      @keyframes dropIn {
+        0% {
+          transform: translateY(-100%) scale(0.8);
+          opacity: 0;
+        }
+        50% {
+          transform: scale(1.05);
+          opacity: 0.8;
+        }
+        70% {
+          transform: translateY(-5%) scale(0.98);
+        }
+        100% {
+          transform: translateY(0) scale(1);
+          opacity: 1;
+        }
+      }
+
+      .frame-thumb.dropping {
+        animation: dropIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      }
+
+      /* Animation overlay */
+      #animation-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 10;
+      }
     </style>
   </head>
   <body
     class="bg-black text-white min-h-screen flex items-center justify-center flex-col"
   >
     <div class="text-center">
-      <div class="p-2 border-2 border-white/20 bg-neutral-900/20">
-        <div class="p-2 border-2 border-white/40 bg-neutral-900/20">
-          <div class="p-2 border-2 border-white/60 bg-neutral-800/20">
-            <div class="p-2 border-2 border-white/80 bg-neutral-800/20">
-              <div class="overflow-hidden border-2 border-white">
+      <div class="p-1 border-2 border-white/20 bg-neutral-900/20">
+        <div class="p-1 border-2 border-white/40 bg-neutral-900/20">
+          <div class="p-1 border-2 border-white/60 bg-neutral-800/20">
+            <div class="p-1 border-2 border-white/80 bg-neutral-800/20">
+              <div class="overflow-hidden border-2 border-white relative">
                 <!-- The p5.js canvas will be automatically inserted here -->
                 <div id="canvas-container"></div>
+                <!-- Animation overlay -->
+                <img id="animation-overlay" style="display: none" />
               </div>
             </div>
           </div>
         </div>
       </div>
+    </div>
+    <button
+      id="capture-btn"
+      class="transition-colors bg-transparent p-1 m-1 rounded-full hover:bg-white/10 active:bg-white/20 focus:outline-none block border-none cursor-pointer"
+      type="button"
+      aria-label="More"
+    >
+      <svg
+        width="32"
+        height="32"
+        viewBox="0 0 32 32"
+        aria-hidden="true"
+        style="display: block; margin: auto"
+      >
+        <polyline
+          points="8,14 16,22 24,14"
+          fill="none"
+          stroke="#888888"
+          stroke-width="3"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </button>
+    <div class="text-center w-full max-w-lg">
+      <div class="p-1 border-2 border-white/20 bg-neutral-900/20">
+        <div class="p-1 border-2 border-white/40 bg-neutral-900/20">
+          <div class="p-1 border-2 border-white/60 bg-neutral-800/20">
+            <div class="p-1 border-2 border-white/80 bg-neutral-800/20">
+              <div class="overflow-hidden border-2 border-white">
+                <!-- The p5.js canvas will be automatically inserted here -->
+                <div
+                  id="frame-container"
+                  class="h-24 w-full overflow-x-auto whitespace-nowrap flex items-center justify-start"
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Play/Stop Button -->
+      <button
+        id="play-btn"
+        class="mt-2 px-2 py-2 bg-white/10 border-2 hover:bg-white/20 text-white text-sm rounded-full transition-colors flex items-center gap-2 mx-auto"
+        type="button"
+        aria-label="Play/Stop Animation"
+      >
+        <svg
+          id="play-icon"
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="currentColor"
+        >
+          <path d="M4 2v12l10-6z" />
+        </svg>
+        <svg
+          id="stop-icon"
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="currentColor"
+          style="display: none"
+        >
+          <rect x="3" y="3" width="10" height="10" />
+        </svg>
+        <span id="play-btn-text" class="hidden">Play Animation</span>
+      </button>
     </div>
 
     <!-- Context Menu -->
@@ -95,7 +237,7 @@
         class="context-menu-item w-full text-xs text-left px-2 py-1 hover:bg-white/10 flex items-center justify-between group"
         data-action="random"
       >
-        <span>Random Drawing</span>
+        <span>Random Seascape</span>
         <span class="text-xs text-gray-400 group-hover:text-gray-300">R</span>
       </button>
       <button
@@ -143,13 +285,6 @@
       >
         <span>Save Image</span>
         <span class="text-xs text-gray-400 group-hover:text-gray-300">S</span>
-      </button>
-      <button
-        class="context-menu-item w-full text-xs text-left px-2 py-1 hover:bg-white/10 flex items-center justify-between group"
-        data-action="debug"
-      >
-        <span>Debug Mode</span>
-        <span class="text-xs text-gray-400 group-hover:text-gray-300">D</span>
       </button>
     </div>
 
