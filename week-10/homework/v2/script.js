@@ -22,6 +22,7 @@ let brushSize = 1;
 let lastDrawTime = 0;
 let drawingOpacity = 255;
 let targetDrawingOpacity = 255;
+let drawStartFrame = 0; // Track when drawing starts to avoid initial line
 
 // Opacity for overlays
 let horizonOpacityA = 0;
@@ -34,8 +35,8 @@ let debugMode = false;
 let lastGeneratedCanvas = null;
 
 // Timing constants
-const INACTIVITY_FADE_DELAY = 3000; // Start fading after 3 seconds of inactivity
-const FADE_DURATION = 1000; // Fade out over 1 second
+const INACTIVITY_FADE_DELAY = 1000; // Start fading after 3 seconds of inactivity
+const FADE_DURATION = 500; // Fade out over 1 second
 
 // Model class
 class HorizonGenerator {
@@ -214,7 +215,7 @@ function draw() {
   }
 
   // Draw current stroke if drawing (scale down coordinates)
-  if (isDrawing) {
+  if (isDrawing && frameCount > drawStartFrame) {
     drawingGraphics.stroke(0);
     drawingGraphics.strokeWeight(brushSize);
     // Scale down mouse coordinates to model size
@@ -247,6 +248,7 @@ function draw() {
 function mousePressed() {
   if (mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
     isDrawing = true;
+    drawStartFrame = frameCount; // Record when drawing starts
     lastDrawTime = millis(); // Update last draw time
     // Cancel any pending generation
     if (generateTimeout) {
@@ -256,7 +258,7 @@ function mousePressed() {
 }
 
 function mouseDragged() {
-  if (isDrawing) {
+  if (isDrawing && frameCount > drawStartFrame) {
     drawingGraphics.stroke(0);
     drawingGraphics.strokeWeight(brushSize);
     // Scale down mouse coordinates to model size
@@ -287,7 +289,7 @@ function mouseReleased() {
 }
 
 function keyPressed() {
-  // Clear canvas
+  // Clear canvas and trigger generation
   if (key === 'c' || key === 'C') {
     drawingGraphics.background(255);
     horizonGraphicsA.clear();
@@ -298,6 +300,17 @@ function keyPressed() {
     targetOpacityB = 0;
     lastDrawTime = millis(); // Reset draw time to show cleared canvas
     console.log('🧹 Canvas cleared');
+
+    // Trigger generation after clearing
+    if (isModelLoaded && !isGenerating) {
+      if (generateTimeout) {
+        clearTimeout(generateTimeout);
+      }
+      // Small delay to show the cleared canvas before generating
+      generateTimeout = setTimeout(() => {
+        generateHorizon();
+      }, 100);
+    }
   }
 
   // Change brush size
@@ -622,6 +635,7 @@ function touchStarted() {
     let touch = touches[0];
     if (touch.x >= 0 && touch.x <= width && touch.y >= 0 && touch.y <= height) {
       isDrawing = true;
+      drawStartFrame = frameCount; // Record when drawing starts
       lastDrawTime = millis(); // Update last draw time
       if (generateTimeout) {
         clearTimeout(generateTimeout);
@@ -632,7 +646,7 @@ function touchStarted() {
 }
 
 function touchMoved() {
-  if (isDrawing && touches.length > 0) {
+  if (isDrawing && touches.length > 0 && frameCount > drawStartFrame) {
     drawingGraphics.stroke(0);
     drawingGraphics.strokeWeight(brushSize);
     // Scale down touch coordinates to model size
