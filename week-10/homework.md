@@ -34,6 +34,8 @@ I understand that it takes away the fun of drawing. To add it back, I added a ti
 
 ![Random sequence example](assets/random-sequence.gif)
 
+The final version is live [here](https://yz3440.github.io/drawing-plus-plus/week-10/homework/v3).
+
 ## Fun quote from reading
 
 > “Art is not what you see, but what you make others see.” – Edgar Degas
