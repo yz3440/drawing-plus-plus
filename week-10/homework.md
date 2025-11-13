@@ -6,7 +6,7 @@ Build a system that learns from drawings, extends drawings or produces drawings 
 
 ## Ideas
 
-I want to train a model form scratch with an interesting dataset. I happened to have [a dataset of seascapes aligned by it's horizon line](https://www.yufengzhao.com/projects/aligned-waters). I cropped them into square images with the horizon line at the center and resized them to 256x256. The dataset is availabe on [Github](https://github.com/yz3440/aligned-waters/blob/main/resizer/processed_images_256.zip).
+I want to train a model from scratch with an interesting dataset. I happened to have [a dataset of seascapes aligned by its horizon line](https://www.yufengzhao.com/projects/aligned-waters). I cropped them into square images with the horizon line at the center and resized them to 256x256. The dataset is available on [Github](https://github.com/yz3440/aligned-waters/blob/main/resizer/processed_images_256.zip).
 
 ![Seascape example](assets/data-example.jpg)
 
@@ -22,7 +22,7 @@ I converted the model to a TensorFlow.js model with UINT8 quantization and uploa
 
 ![Drawing example](assets/drawing.gif)
 
-The problem is, if you don't know what the dataset is, you don't know how to hint the model to generate the right things. To get the visiter started, I added a one-click sketch generator - it draws a horizontal line in the center, some random lines below that, and some random spirals above that. They then become the horizon, the reflections on the water, and some clouds in the sky.
+The problem is, if you don't know what the dataset is, you don't know how to hint the model to generate the right things. To get the visitor started, I added a one-click sketch generator - it draws a horizontal line in the center, some random lines below that, and some random spirals above that. They then become the horizon, the reflections on the water, and some clouds in the sky.
 
 ![Sketch generator example](assets/generate.gif)
 
@@ -38,4 +38,4 @@ The final version is live [here](https://yz3440.github.io/drawing-plus-plus/week
 
 ## Fun quote from reading
 
-> “Art is not what you see, but what you make others see.” – Edgar Degas
+> Ingres famously described drawing as "the probity of art". Teach someone to draw and you have a painter, he suggested, notwithstanding that his own paintings have a dazzling, heroic, monumental presence, that they are much more than coloured drawings, more than the sum of their parts. pp.72
