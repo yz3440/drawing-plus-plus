@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pizza Maker</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- P5.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
+  </head>
+  <body
+    class="bg-black text-white min-h-screen flex flex-col items-center justify-center"
+    oncontextmenu="return false;"
+  >
+    <div class="text-center">
+      <div class="p-2 border-2 border-white/20 bg-neutral-900/20">
+        <div class="p-2 border-2 border-white/40 bg-neutral-900/20">
+          <div class="p-2 border-2 border-white/60 bg-neutral-800/20">
+            <div class="p-2 border-2 border-white/80 bg-neutral-800/20">
+              <div class="overflow-hidden border-2 border-white">
+                <!-- The p5.js canvas will be automatically inserted here -->
+                <div id="canvas-container"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div
+        class="text-center text-sm mt-4 text-white/50 flex flex-row justify-between"
+      >
+        <div class="w-48 text-left">draw anything triangular</div>
+        <div class="w-48 text-center">can be a pizza slice</div>
+        <div class="w-48 text-right">or a flower petal</div>
+      </div>
+      <div class="text-center mt-4">
+        <button
+          id="save-svg-btn"
+          class="px-6 py-2 border-2 border-white/20 text-white hover:bg-neutral-800 transition-colors"
+        >
+          save as svg
+        </button>
+      </div>
+    </div>
+
+    <!-- Link to your p5.js script -->
+    <script src="util.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>
