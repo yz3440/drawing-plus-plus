@@ -73,7 +73,15 @@ export class ShapeAudio {
 
     // Buffer is 1 second long, rate = 1 / duration
     modulator.playbackRate.value = 1 / loopDuration;
-    modulator.start();
+
+    // Start the buffer at the correct phase to sync with the global Metronome
+    // Buffer is 1 second long, so offset = progress * 1 second
+    const currentProgress = Metronome.getProgress(
+      this.p.millis(),
+      this.loopBars
+    );
+    const bufferOffset = currentProgress * 1; // 1 second buffer
+    modulator.start(0, bufferOffset);
     this.modulator = modulator;
 
     // 3. VCA (Voltage Controlled Amplifier)

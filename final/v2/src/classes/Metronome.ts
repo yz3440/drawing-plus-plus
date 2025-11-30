@@ -3,7 +3,7 @@ import { settings } from '../constants';
 /**
  * Global metronome that provides a synchronized musical clock.
  * All shapes sync their loops to this clock to stay in phase.
- * 
+ *
  * Time is tracked in "bars" (4 beats). When BPM changes, the bar position
  * is preserved so all shapes maintain their relative phase.
  */
@@ -36,7 +36,8 @@ class MetronomeClass {
     // Check if BPM changed
     if (settings.BPM !== this.lastBPM) {
       // Accumulate bars at the old BPM before switching
-      const elapsedSinceLastUpdate = (currentTimeMs - this.lastUpdateTimeMs) / 1000;
+      const elapsedSinceLastUpdate =
+        (currentTimeMs - this.lastUpdateTimeMs) / 1000;
       const barDurationAtOldBPM = (60 / this.lastBPM) * 4;
       this.accumulatedBars += elapsedSinceLastUpdate / barDurationAtOldBPM;
 
@@ -53,7 +54,8 @@ class MetronomeClass {
   getBars(currentTimeMs: number): number {
     if (!this.isRunning) return 0;
 
-    const elapsedSinceLastUpdate = (currentTimeMs - this.lastUpdateTimeMs) / 1000;
+    const elapsedSinceLastUpdate =
+      (currentTimeMs - this.lastUpdateTimeMs) / 1000;
     const barDuration = (60 / settings.BPM) * 4;
     const barsSinceLastUpdate = elapsedSinceLastUpdate / barDuration;
 
@@ -87,4 +89,3 @@ class MetronomeClass {
 
 // Singleton instance
 export const Metronome = new MetronomeClass();
-
