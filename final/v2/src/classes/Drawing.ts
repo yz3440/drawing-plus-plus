@@ -3,7 +3,7 @@ import {
   CANVAS_HEIGHT,
   GRAVITY,
   TRIANGULARITY_THRESHOLD,
-  BPM,
+  settings,
 } from '../constants';
 import {
   Point,
@@ -56,6 +56,11 @@ export class Drawing {
   wave: WaveSamplePoint[] | null = null;
   audioSources: (AudioBufferSourceNode | OscillatorNode)[] = [];
   gainNode: GainNode | null = null;
+  modulator: AudioBufferSourceNode | null = null; // Track the modulator separately
+
+  loopDuration: number = 0;
+  startTime: number = 0;
+  referencePerimeter: number = 1000; // Add as a property
 
   constructor(p: p5) {
     this.p = p;
@@ -98,6 +103,28 @@ export class Drawing {
       this.points[this.points.length - 1].y !== y
     ) {
       this.points.push(new Point(x, y));
+    }
+  }
+
+  updateAudioParams() {
+    if (this.modulator && this.isTriangle && this.loopDuration > 0) {
+      // Recalculate loop duration based on new BPM
+      const barDuration = (60 / settings.BPM) * 4;
+      const loopDuration =
+        (this.lengthOfSimplifiedTriangle / this.referencePerimeter) *
+        barDuration;
+
+      this.loopDuration = loopDuration;
+
+      // Update playback rate
+      // Since we are changing rate in real-time, we might need to handle pitch shift carefully
+      // But for an LFO control signal, instant change is usually fine.
+      // Note: AudioBufferSourceNode.playbackRate is an AudioParam, so we can set .value
+      this.modulator.playbackRate.value = 1 / loopDuration;
+
+      // We also need to adjust startTime to keep the phase consistent if possible?
+      // Or just let it drift. Given it's a loop, sudden rate change will just change speed.
+      // Visualizer sync relies on loopDuration, so updating it here keeps visualizer in sync.
     }
   }
 
@@ -162,7 +189,7 @@ export class Drawing {
     }
     console.log('triangularity', this.triangularity);
 
-    this.isTriangle = this.triangularity > TRIANGULARITY_THRESHOLD;
+    this.isTriangle = this.triangularity > settings.TRIANGULARITY_THRESHOLD;
 
     if (!this.isTriangle) {
       return;
@@ -259,16 +286,20 @@ export class Drawing {
         // Calculate duration based on lengthOfSimplifiedTriangle
         // Let's say 1000 pixels perimeter = 1 bar (2 seconds at 120 BPM)
         // Adjust scaling factor as needed
-        const referencePerimeter = 1000;
-        const barDuration = (60 / BPM) * 4; // 2 seconds
+        // const referencePerimeter = 1000; // Now a class property
+        const barDuration = (60 / settings.BPM) * 4; // 2 seconds
         const loopDuration =
-          (this.lengthOfSimplifiedTriangle / referencePerimeter) * barDuration;
+          (this.lengthOfSimplifiedTriangle / this.referencePerimeter) *
+          barDuration;
+        this.loopDuration = loopDuration;
+        this.startTime = this.p.millis() / 1000;
 
         // buffer is 1 second long
         // rate = 1 / duration
         modulator.playbackRate.value = 1 / loopDuration;
 
         modulator.start();
+        this.modulator = modulator; // Store reference
 
         // 3. VCA (Voltage Controlled Amplifier)
         const vca = ctx.createGain();
@@ -283,24 +314,25 @@ export class Drawing {
         this.audioSources.push(modulator);
 
         this.p.userStartAudio();
-
-        this.p.userStartAudio();
       }
     }
   }
 
   draw() {
+    // Update audio params every frame to react to GUI changes
+    // In a real app, we might use an event listener or callback, but polling is fine here
+    this.updateAudioParams();
+
     this.p.push();
     if (this.doneDrawing && this.isTriangle) {
+      this.p.push(); // START transformation block
       this.p.translate(this.shapeTranslationX, this.shapeTranslationY);
       this.p.scale(this.scale);
       this.p.rotate(this.rotation);
-      this.p.fill(255, 0, 0);
-      this.p.noStroke();
-      // circle(0, 0, 300);
-    }
-
-    if ((!this.firstPolygonPoints || !this.isTriangle) && this.doneDrawing) {
+    } else if (
+      (!this.firstPolygonPoints || !this.isTriangle) &&
+      this.doneDrawing
+    ) {
       this.fallingVelocityY += this.fallingAccelerationY;
       this.fallingTranslationY += this.fallingVelocityY;
       this.p.translate(0, this.fallingTranslationY);
@@ -354,6 +386,96 @@ export class Drawing {
       }
       this.p.endShape(this.p.CLOSE);
       this.p.pop();
+    }
+
+    if (this.doneDrawing && this.isTriangle) {
+      this.p.pop(); // END transformation block
+    }
+
+    // Audio Visualizer
+    if (
+      this.wave &&
+      this.doneDrawing &&
+      this.isTriangle &&
+      this.loopDuration > 0
+    ) {
+      const currentTime = this.p.millis() / 1000;
+      // We need a consistent phase that survives BPM changes.
+      // Simply using (currentTime - startTime) % loopDuration is problematic if loopDuration changes mid-cycle.
+      // Ideally, we'd integrate phase over time: phase += dt / duration.
+      // But for simplicity, let's stick to the current time based approach and accept a jump or try to smooth it?
+      // If we just recalculate loopDuration in updateAudioParams, the visualizer uses the NEW loopDuration.
+      // The audio buffer playback rate also changes.
+      // They SHOULD stay in sync if both update to the same new duration.
+      // The only issue is the `elapsedTime` calculation.
+      // If we change BPM, `loopDuration` changes. `(t - start) % newDuration` might be a different phase than `(t - start) % oldDuration`.
+      // This causes a visual jump.
+      // To fix this properly requires tracking accumulated phase.
+      // But for this request ("visualizer also react"), simple update is the first step.
+
+      const elapsedTime = currentTime - this.startTime;
+      const progress = (elapsedTime % this.loopDuration) / this.loopDuration;
+
+      const totalLength = this.wave[this.wave.length - 1].t;
+      const currentT = progress * totalLength;
+
+      let sampleIndex = 0;
+      for (let i = 0; i < this.wave.length - 1; i++) {
+        if (this.wave[i].t <= currentT && this.wave[i + 1].t > currentT) {
+          sampleIndex = i;
+          break;
+        }
+      }
+
+      const s1 = this.wave[sampleIndex];
+      const s2 = this.wave[sampleIndex + 1] || s1;
+
+      // Interpolate for smoother position
+      const segmentDuration = s2.t - s1.t;
+      const segmentProgress =
+        segmentDuration > 0 ? (currentT - s1.t) / segmentDuration : 0;
+
+      if (
+        s1.pt &&
+        s2.pt &&
+        s1.ptProjectedOnSegment &&
+        s2.ptProjectedOnSegment
+      ) {
+        // Interpolate between points on the polygon (The jagged path)
+        const polyX = s1.pt.x + (s2.pt.x - s1.pt.x) * segmentProgress;
+        const polyY = s1.pt.y + (s2.pt.y - s1.pt.y) * segmentProgress;
+
+        // Interpolate between points on the triangle (The smooth path)
+        const triX =
+          s1.ptProjectedOnSegment.x +
+          (s2.ptProjectedOnSegment.x - s1.ptProjectedOnSegment.x) *
+            segmentProgress;
+        const triY =
+          s1.ptProjectedOnSegment.y +
+          (s2.ptProjectedOnSegment.y - s1.ptProjectedOnSegment.y) *
+            segmentProgress;
+
+        this.p.push();
+
+        this.p.translate(this.shapeTranslationX, this.shapeTranslationY);
+        this.p.scale(this.scale);
+        this.p.rotate(this.rotation);
+
+        // Draw Visualizer on Polygon (Jagged)
+        this.p.fill(255); // White
+        this.p.noStroke();
+        this.p.circle(polyX, polyY, 5);
+
+        // Draw Visualizer on Triangle (Smooth)
+        this.p.fill(0, 255, 0); // Green
+        this.p.circle(triX, triY, 5);
+
+        // Optional: Draw connecting line
+        this.p.stroke(255);
+        this.p.line(polyX, polyY, triX, triY);
+
+        this.p.pop();
+      }
     }
 
     this.p.pop();

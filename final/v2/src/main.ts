@@ -2,7 +2,8 @@ import p5 from 'p5';
 import './style.css';
 import { Drawing } from './classes/Drawing';
 import { Pie } from './classes/Pie';
-import { CANVAS_WIDTH, CANVAS_HEIGHT } from './constants';
+import { CANVAS_WIDTH, CANVAS_HEIGHT, settings } from './constants';
+import * as dat from 'dat.gui';
 
 // @ts-ignore
 window.p5 = p5;
@@ -25,6 +26,14 @@ const sketch = (p: p5) => {
     canvas.parent('canvas-container');
 
     p.background(0);
+
+    // Initialize dat.gui
+    const gui = new dat.GUI();
+    gui.add(settings, 'BPM', 60, 240).step(1).name('BPM');
+    gui
+      .add(settings, 'TRIANGULARITY_THRESHOLD', 0, 0.8)
+      .step(0.01)
+      .name('Tri. Threshold');
   };
 
   p.draw = () => {
