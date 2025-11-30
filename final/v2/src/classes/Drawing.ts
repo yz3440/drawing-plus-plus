@@ -1,5 +1,5 @@
 import p5 from 'p5';
-import _ from 'lodash';
+import { CANVAS_HEIGHT, GRAVITY, TRIANGULARITY_THRESHOLD } from '../constants';
 import {
   Point,
   extractFirstPolygon,
@@ -14,7 +14,6 @@ import {
   getPositiveAngleFromThreePoints,
   getAngle,
 } from '../util';
-import { CANVAS_HEIGHT, GRAVITY, TRIANGULARITY_THRESHOLD } from '../constants';
 
 export class Drawing {
   p: p5;
