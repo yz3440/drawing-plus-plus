@@ -88,6 +88,17 @@ class Drawing {
     this.extraLinePolygonOpacity = 100;
     this.scale = 1;
     this.isTriangle = false;
+
+    this.finishFrameCount = 0;
+    this.firstPolygonPoints = null;
+    this.areaOfFirstPolygon = 0;
+    this.simplifiedPoints = null;
+    this.simplifiedTrianglePoints = null;
+    this.triangularity = 0;
+    this.areadOfSimplifiedTriangle = 0;
+    this.smallestAngle = 0;
+    this.smallestAngleTipPoint = null;
+    this.initialRotation = 0;
   }
 
   addPoint(x, y) {
