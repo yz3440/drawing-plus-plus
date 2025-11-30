@@ -74,27 +74,30 @@ const TRIANGULARITY_THRESHOLD = 0.65;
 
 class Drawing {
   constructor() {
+    // Points & Shape Geometry
     this.points = [];
+    this.firstPolygonPoints = null;
+    this.simplifiedPoints = null;
+    this.simplifiedTrianglePoints = null;
 
+    // Physics & Animation
     this.fallingTranslationY = 0;
     this.fallingVelocityY = 0;
     this.fallingAccelerationY = g;
+    this.extraLinePolygonOpacity = 100;
+    this.finishFrameCount = 0;
 
+    // Transformation & State
     this.shapeTranslationX = 0;
     this.shapeTranslationY = 0;
-
     this.rotation = 0;
-    this.doneDrawing = false;
-    this.extraLinePolygonOpacity = 100;
     this.scale = 1;
+    this.doneDrawing = false;
     this.isTriangle = false;
 
-    this.finishFrameCount = 0;
-    this.firstPolygonPoints = null;
-    this.areaOfFirstPolygon = 0;
-    this.simplifiedPoints = null;
-    this.simplifiedTrianglePoints = null;
+    // Analysis & Metrics
     this.triangularity = 0;
+    this.areaOfFirstPolygon = 0;
     this.areadOfSimplifiedTriangle = 0;
     this.smallestAngle = 0;
     this.smallestAngleTipPoint = null;
