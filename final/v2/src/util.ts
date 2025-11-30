@@ -425,6 +425,8 @@ export function ensureWithinPi(angle: number): number {
 export interface WaveSamplePoint {
   t: number;
   amplitude: number;
+  pt: Point;
+  ptProjectedOnSegment: Point;
 }
 
 export function getWave(
@@ -453,6 +455,8 @@ export function getWave(
     .map((sample) => ({
       ...sample,
       t: sample.t * firstEdgeLength,
+      pt: sample.pt,
+      ptProjectedOnSegment: sample.ptProjectedOnSegment,
     }));
   console.log('firstEdgePts', firstEdgePts);
   console.log('firstEdgeWaveSamples', firstEdgeWaveSamples);
@@ -468,6 +472,8 @@ export function getWave(
     .map((sample) => ({
       ...sample,
       t: sample.t * secondEdgeLength + firstEdgeLength,
+      pt: sample.pt,
+      ptProjectedOnSegment: sample.ptProjectedOnSegment,
     }));
   console.log('secondEdgePts', secondEdgePts);
   console.log('secondEdgeWaveSamples', secondEdgeWaveSamples);
@@ -483,6 +489,8 @@ export function getWave(
     .map((sample) => ({
       ...sample,
       t: sample.t * thirdEdgeLength + firstEdgeLength + secondEdgeLength,
+      pt: sample.pt,
+      ptProjectedOnSegment: sample.ptProjectedOnSegment,
     }));
   console.log('thirdEdgePts', thirdEdgePts);
   console.log('thirdEdgeWaveSamples', thirdEdgeWaveSamples);
@@ -560,7 +568,12 @@ export function projectPointOntoLineSegment(
   const vLenSq = v.x * v.x + v.y * v.y;
 
   if (vLenSq === 0) {
-    return { t: 0, amplitude: dist(point, p1) };
+    return {
+      t: 0,
+      amplitude: dist(point, p1),
+      pt: point,
+      ptProjectedOnSegment: p1,
+    };
   }
 
   const t = (w.x * v.x + w.y * v.y) / vLenSq;
@@ -570,5 +583,13 @@ export function projectPointOntoLineSegment(
   const cross = v.x * w.y - v.y * w.x;
   const amplitude = cross / Math.sqrt(vLenSq);
 
-  return { t: clampedT, amplitude };
+  return {
+    t: clampedT,
+    amplitude,
+    pt: point,
+    ptProjectedOnSegment: new Point(
+      p1.x + clampedT * v.x,
+      p1.y + clampedT * v.y
+    ),
+  };
 }
