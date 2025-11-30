@@ -234,9 +234,9 @@ export function simplifyPolygonUntilNumberOfPoints(
     }
     iterations++;
   }
-  console.log('points.length', currentPoints.length);
-  console.log('n', n);
-  console.log('iterations', iterations);
+  // console.log('points.length', currentPoints.length);
+  // console.log('n', n);
+  // console.log('iterations', iterations);
   return currentPoints;
 }
 
@@ -412,4 +412,116 @@ export function ensureWithinPi(angle: number): number {
     return ensureWithinPi(angle + 2 * Math.PI);
   }
   return angle;
+}
+
+export interface WaveSamplePoint {
+  t: number;
+  amplitude: number;
+}
+
+export function getWave(
+  polygonPoints: Point[],
+  trianglePoints: [Point, Point, Point]
+): WaveSamplePoint[] {
+  const origin = new Point(0, 0);
+
+  // shift the triangle vertices so that it starts at the smallest angle tip point
+  const shiftedTrianglePoints = shiftPolygon(
+    trianglePoints,
+    trianglePoints.findIndex((p) => p.equalTo(origin))
+  );
+
+  const [tp1, tp2, tp3] = shiftedTrianglePoints;
+
+  const shiftedPolygonPoints = shiftPolygon(
+    polygonPoints,
+    polygonPoints.findIndex((p) => p.equalTo(origin))
+  );
+
+  console.log('shiftedPolygonPoints', shiftedPolygonPoints);
+
+  const secondTrianglePtPolygonIndex = shiftedPolygonPoints.findIndex((p) =>
+    p.equalTo(tp2)
+  );
+
+  const thirdTrianglePtPolygonIndex = shiftedPolygonPoints.findIndex((p) =>
+    p.equalTo(tp3)
+  );
+
+  console.log('shiftedTrianglePoints', shiftedTrianglePoints);
+
+  const firstEdgePts = shiftedPolygonPoints.slice(
+    0,
+    secondTrianglePtPolygonIndex + 1
+  );
+  const firstEdgeLineSegment: [Point, Point] = [tp1, tp2];
+  const firstEdgeLength = dist(tp1, tp2);
+  const firstEdgeWaveSamples = firstEdgePts
+    .map((p) => projectPointOntoLineSegment(p, firstEdgeLineSegment))
+    .map((sample) => ({
+      ...sample,
+      t: sample.t * firstEdgeLength,
+    }));
+  console.log('firstEdgePts', firstEdgePts);
+  console.log('firstEdgeWaveSamples', firstEdgeWaveSamples);
+
+  const secondEdgePts = shiftedPolygonPoints.slice(
+    secondTrianglePtPolygonIndex,
+    thirdTrianglePtPolygonIndex + 1
+  );
+  const secondEdgeLineSegment: [Point, Point] = [tp2, tp3];
+  const secondEdgeLength = dist(tp2, tp3);
+  const secondEdgeWaveSamples = secondEdgePts
+    .map((p) => projectPointOntoLineSegment(p, secondEdgeLineSegment))
+    .map((sample) => ({
+      ...sample,
+      t: sample.t * secondEdgeLength + firstEdgeLength,
+    }));
+  console.log('secondEdgePts', secondEdgePts);
+  console.log('secondEdgeWaveSamples', secondEdgeWaveSamples);
+
+  const thirdEdgePts = shiftedPolygonPoints
+    .slice(thirdTrianglePtPolygonIndex, shiftedPolygonPoints.length)
+    .concat([shiftedPolygonPoints[0]]);
+
+  const thirdEdgeLineSegment: [Point, Point] = [tp3, tp1];
+  const thirdEdgeLength = dist(tp3, tp1);
+  const thirdEdgeWaveSamples = thirdEdgePts
+    .map((p) => projectPointOntoLineSegment(p, thirdEdgeLineSegment))
+    .map((sample) => ({
+      ...sample,
+      t: sample.t * thirdEdgeLength + firstEdgeLength + secondEdgeLength,
+    }));
+  console.log('thirdEdgePts', thirdEdgePts);
+  console.log('thirdEdgeWaveSamples', thirdEdgeWaveSamples);
+
+  return [
+    ...firstEdgeWaveSamples,
+    ...secondEdgeWaveSamples,
+    ...thirdEdgeWaveSamples,
+  ];
+}
+
+export function projectPointOntoLineSegment(
+  point: Point,
+  lineSegment: [Point, Point]
+): WaveSamplePoint {
+  const [p1, p2] = lineSegment;
+  const v = new Vector(p1, p2);
+  const w = new Vector(p1, point);
+
+  const vLenSq = v.x * v.x + v.y * v.y;
+
+  if (vLenSq === 0) {
+    return { t: 0, amplitude: dist(point, p1) };
+  }
+
+  const t = (w.x * v.x + w.y * v.y) / vLenSq;
+  const clampedT = Math.max(0, Math.min(1, t));
+
+  // Amplitude as signed distance (perpendicular)
+  const cross = v.x * w.y - v.y * w.x;
+  const amplitude = cross / Math.sqrt(vLenSq);
+
+  return { t: clampedT, amplitude };
 }

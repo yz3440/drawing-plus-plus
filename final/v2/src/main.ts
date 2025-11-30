@@ -94,7 +94,7 @@ const sketch = (p: p5) => {
     currentDrawing.finishDrawing();
     if (currentDrawing.isTriangle) {
       if (currentPie.canAddDrawing(currentDrawing)) {
-        console.log('can');
+        console.log('Pie can still add drawing');
         currentPie.addDrawing(currentDrawing);
       } else {
         currentPie.scale = 0.3;
@@ -110,7 +110,6 @@ const sketch = (p: p5) => {
       drawings.push(currentDrawing);
     }
     currentDrawing = null;
-    console.log(drawings);
   }
 };
 

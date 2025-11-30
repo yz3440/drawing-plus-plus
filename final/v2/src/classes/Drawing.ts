@@ -13,6 +13,8 @@ import {
   ensureNonCyclic,
   getPositiveAngleFromThreePoints,
   getAngle,
+  getWave,
+  WaveSamplePoint,
 } from '../util';
 
 export class Drawing {
@@ -42,6 +44,7 @@ export class Drawing {
   smallestAngleTipPoint: Point | null;
   initialRotation: number;
   startAngle: number;
+  wave: WaveSamplePoint[] | null = null;
 
   constructor(p: p5) {
     this.p = p;
@@ -103,7 +106,6 @@ export class Drawing {
     );
 
     // Simplify first polygon to 3 points
-
     const bbOfFirstPolygon = boundingBoxAndCenterOfPolygon(firstPolygonPoints);
     this.firstPolygonPoints = firstPolygonPoints;
     this.areaOfFirstPolygon = positivePolygonArea(firstPolygonPoints);
@@ -123,6 +125,7 @@ export class Drawing {
       radius * 0.1,
       radius * 0.1 * 0.1
     );
+
     this.simplifiedTrianglePoints = ensureNonCyclic(
       ensureCounterClockwise(this.simplifiedTrianglePoints)
     );
@@ -162,7 +165,7 @@ export class Drawing {
           (i + 1) % this.simplifiedTrianglePoints.length
         ];
       const angle = getPositiveAngleFromThreePoints(pt, p1, p2);
-      console.log('angle', (angle * 180) / Math.PI);
+      // console.log('angle', (angle * 180) / Math.PI);
       if (angle < this.smallestAngle) {
         this.smallestAngle = angle;
         this.smallestAngleTipPoint = pt;
@@ -170,8 +173,8 @@ export class Drawing {
       }
     }
 
-    console.log('smallestAngle', (this.smallestAngle * 180) / Math.PI);
-    console.log('smallestAngleTipPoint', this.smallestAngleTipPoint);
+    // console.log('smallestAngle', (this.smallestAngle * 180) / Math.PI);
+    // console.log('smallestAngleTipPoint', this.smallestAngleTipPoint);
 
     if (this.smallestAngleTipPoint) {
       this.shapeTranslationX = this.smallestAngleTipPoint.x;
@@ -197,6 +200,12 @@ export class Drawing {
           p.translate(tx, ty)
         );
       }
+
+      this.wave = getWave(
+        this.firstPolygonPoints,
+        this.simplifiedTrianglePoints as [Point, Point, Point]
+      );
+      console.log('wave', this.wave);
     }
   }
 
