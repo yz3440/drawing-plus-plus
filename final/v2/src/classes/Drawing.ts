@@ -83,7 +83,7 @@ export class Drawing {
       this.points[this.points.length - 1].x !== x ||
       this.points[this.points.length - 1].y !== y
     ) {
-      this.points.push({ x, y });
+      this.points.push(new Point(x, y));
     }
   }
 
@@ -109,15 +109,18 @@ export class Drawing {
     this.areaOfFirstPolygon = positivePolygonArea(firstPolygonPoints);
     const convexHullPoints = convexHull(this.firstPolygonPoints);
 
+    // radius calculation
+    const radius = Math.min(bbOfFirstPolygon.width, bbOfFirstPolygon.height) / 2 || 1;
+
     this.simplifiedPoints = simplifyPolygonWithEpsilon(
       convexHullPoints,
-      bbOfFirstPolygon.radius * 0.1
+      radius * 0.1
     );
     this.simplifiedTrianglePoints = simplifyPolygonUntilNumberOfPoints(
       this.simplifiedPoints,
       3,
-      bbOfFirstPolygon.radius * 0.1,
-      bbOfFirstPolygon.radius * 0.1 * 0.1
+      radius * 0.1,
+      radius * 0.1 * 0.1
     );
     this.simplifiedTrianglePoints = _.flow([
       ensureCounterClockwise,
@@ -173,22 +176,21 @@ export class Drawing {
     if (this.smallestAngleTipPoint) {
       this.shapeTranslationX = this.smallestAngleTipPoint.x;
       this.shapeTranslationY = this.smallestAngleTipPoint.y;
-      const shiftOrigin = (pt: Point) => {
-        return {
-          x: pt.x - this.shapeTranslationX,
-          y: pt.y - this.shapeTranslationY,
-        };
-      };
-      this.points = this.points.map(shiftOrigin);
+      
+      // Use translate method
+      const tx = -this.shapeTranslationX;
+      const ty = -this.shapeTranslationY;
+
+      this.points = this.points.map(p => p.translate(tx, ty));
       if (this.firstPolygonPoints) {
-        this.firstPolygonPoints = this.firstPolygonPoints.map(shiftOrigin);
+        this.firstPolygonPoints = this.firstPolygonPoints.map(p => p.translate(tx, ty));
       }
       if (this.simplifiedPoints) {
-        this.simplifiedPoints = this.simplifiedPoints.map(shiftOrigin);
+        this.simplifiedPoints = this.simplifiedPoints.map(p => p.translate(tx, ty));
       }
       if (this.simplifiedTrianglePoints) {
         this.simplifiedTrianglePoints =
-          this.simplifiedTrianglePoints.map(shiftOrigin);
+          this.simplifiedTrianglePoints.map(p => p.translate(tx, ty));
       }
     }
   }

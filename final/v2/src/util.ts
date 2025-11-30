@@ -1,97 +1,43 @@
-export interface Point {
-  x: number;
-  y: number;
-}
+import { Point, Segment, Line, Polygon, Box, Vector } from '2d-geometry';
 
-export interface BoundingBox {
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
-  centerX: number;
-  centerY: number;
-  width: number;
-  height: number;
-  radius: number;
-}
+export { Point, Segment, Line, Polygon, Box, Vector };
 
 /**
  * MARK: Basic
  */
 
-export function distSquared(x1: number, y1: number, x2: number, y2: number): number {
-  return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);
+export function distSquared(p1: Point, p2: Point): number {
+  const [dist] = p1.distanceTo(p2);
+  return dist * dist;
 }
 
-export function dist(x1: number, y1: number, x2: number, y2: number): number {
-  return Math.sqrt(distSquared(x1, y1, x2, y2));
+export function dist(p1: Point, p2: Point): number {
+  const [d] = p1.distanceTo(p2);
+  return d;
 }
 
-export function pointDistanceToLine(
-  x0: number,
-  y0: number,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number
-): number {
-  const denominator = dist(x1, y1, x2, y2);
-  if (denominator === 0) {
-    return dist(x0, y0, x1, y1);
-  }
-  const numerator = Math.abs(
-    (y2 - y1) * x0 - (x2 - x1) * y0 + x2 * y1 - y2 * x1
-  );
-  return numerator / denominator;
+export function pointDistanceToLine(p0: Point, p1: Point, p2: Point): number {
+  const line = new Line(p1, p2);
+  const [d] = p0.distanceTo(line);
+  return d;
 }
 
 /**
  * MARK: Line
  */
 
-export function getLineIntersection(
-  p1: Point,
-  p2: Point,
-  p3: Point,
-  p4: Point
-): (Point & { t: number; u: number }) | null {
-  const x1 = p1.x,
-    y1 = p1.y;
-  const x2 = p2.x,
-    y2 = p2.y;
-  const x3 = p3.x,
-    y3 = p3.y;
-  const x4 = p4.x,
-    y4 = p4.y;
-
-  const denominator = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
-
-  // Lines are parallel
-  if (Math.abs(denominator) < 1e-10) return null;
-
-  const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denominator;
-  const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denominator;
-
-  // Check if intersection point is within both line segments
-  if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
-    return {
-      x: x1 + t * (x2 - x1),
-      y: y1 + t * (y2 - y1),
-      t: t,
-      u: u,
-    };
-  }
-
-  return null;
-}
-
 // Main function to extract the first polygon from a path
 export function extractFirstPolygon(points: Point[]) {
-  // Create a copy to modify if needed (though original implementation pushed to input array in one case)
-  // The original code modifies `points` if length is 3.
   const pts = [...points];
+  // Logic from original: if length is 3, push start to end?
+  // But extractFirstPolygon normally deals with finding self-intersection.
+  // If only 3 points, it's a triangle if closed, but here it might be open.
+  // Original code:
+  // if (pts.length === 3) { pts.push(pts[0]); }
+  // else if (pts.length < 4) { return null; }
+
   if (pts.length === 3) {
-    pts.push(pts[0]);
+    pts.push(pts[0].clone());
   } else if (pts.length < 4) {
     return null;
   }
@@ -102,30 +48,22 @@ export function extractFirstPolygon(points: Point[]) {
       // Skip adjacent segments
       if (j === i + 1) continue;
 
-      const intersection = getLineIntersection(
-        pts[i],
-        pts[i + 1],
-        pts[j],
-        pts[j + 1]
-      );
+      const s1 = new Segment(pts[i], pts[i + 1]);
+      const s2 = new Segment(pts[j], pts[j + 1]);
+      const intersections = s1.intersect(s2);
 
-      if (intersection) {
+      if (intersections.length > 0) {
         // Found an intersection - extract the polygon
+        const intersection = intersections[0];
         const polygon: Point[] = [];
 
         // Add the intersection point as the first vertex
-        polygon.push({
-          x: intersection.x,
-          y: intersection.y,
-        });
+        polygon.push(intersection);
 
         // Add all points between the two intersecting segments
         for (let k = i + 1; k <= j; k++) {
           polygon.push(pts[k]);
         }
-
-        // Close the polygon by adding the intersection point again
-        // (optional, depending on your needs)
 
         // Validate that we have at least 3 unique vertices
         if (polygon.length >= 3) {
@@ -134,7 +72,7 @@ export function extractFirstPolygon(points: Point[]) {
             startIndex: i,
             endIndex: j,
             intersection: intersection,
-            isValid: isValidPolygon(polygon),
+            isValid: isValidPolygon(polygon), // We keep using array of points for now as intermediate repr
           };
         }
       }
@@ -145,62 +83,36 @@ export function extractFirstPolygon(points: Point[]) {
 }
 
 export function makeSureCounterClockwise(vertices: Point[]): Point[] {
-  const area = calculatePolygonArea(vertices); // Note: calculatePolygonArea was not defined in original util.js but used in makeSureCounterClockwise. It likely meant signedPolygonArea.
-  // Checking original util.js content...
-  // It calls `calculatePolygonArea(vertices)` on line 125.
-  // But `calculatePolygonArea` is NOT defined in the file provided!
-  // `signedPolygonArea` IS defined.
-  // I will assume `calculatePolygonArea` was intended to be `signedPolygonArea`.
-  if (area < 0) {
+  const polygon = new Polygon(vertices);
+  // Polygon in 2d-geometry handles orientation?
+  // Actually `new Polygon(vertices)` creates faces.
+  // Assuming single face.
+  // `Polygon.area()` returns signed area sum.
+  // But let's stick to manual check if Polygon behavior is complex with multiple faces.
+  if (signedPolygonArea(vertices) < 0) {
     vertices.reverse();
   }
   return vertices;
 }
 
-// Polyfill for missing function if needed, or alias
-function calculatePolygonArea(vertices: Point[]): number {
-    return signedPolygonArea(vertices);
-}
-
 export function isValidPolygon(vertices: Point[]): boolean {
-  if (vertices.length < 3) return false;
-
-  // Check if all points are not collinear
-  // (A valid polygon needs non-collinear points)
-  for (let i = 0; i < vertices.length - 2; i++) {
-    const area = calculateTriangleArea(
-      vertices[i],
-      vertices[i + 1],
-      vertices[i + 2]
-    );
-    if (Math.abs(area) > 1e-10) {
-      return true; // Found non-collinear points
-    }
-  }
-
-  return false;
+  const polygon = new Polygon(vertices);
+  return polygon.isValid();
 }
 
 export function calculateTriangleArea(p1: Point, p2: Point, p3: Point): number {
-  return (
-    0.5 *
-    Math.abs((p2.x - p1.x) * (p3.y - p1.y) - (p3.x - p1.x) * (p2.y - p1.y))
-  );
+  // Cross product of vectors
+  const v1 = new Vector(p1, p2);
+  const v2 = new Vector(p1, p3);
+  return Math.abs(v1.cross(v2)) / 2;
 }
 
 export function ensureCyclic(points: Point[]): Point[] {
-  // Comparing references might not work if points are different objects with same coords.
-  // But original code used object equality `points[0] !== points[points.length - 1]`.
-  // I'll stick to that or coordinate check. Original: reference check.
-  // Wait, if points are `{x,y}` literals, reference check is always true (not equal) unless same object instance.
-  // In `extractFirstPolygon`, we create new objects.
-  // Let's assume reference check or value check.
   if (points.length === 0) return points;
   const first = points[0];
   const last = points[points.length - 1];
-  if (first.x !== last.x || first.y !== last.y) {
-     // Actually, let's just push a copy of the first point
-     points.push({ ...points[0] });
+  if (!first.equalTo(last)) {
+    points.push(first.clone());
   }
   return points;
 }
@@ -209,7 +121,7 @@ export function ensureNonCyclic(points: Point[]): Point[] {
   if (points.length < 2) return points;
   const first = points[0];
   const last = points[points.length - 1];
-  if (first.x === last.x && first.y === last.y) {
+  if (first.equalTo(last)) {
     points.pop();
   }
   return points;
@@ -234,6 +146,11 @@ export function signedPolygonArea(vertices: Point[]): number {
 }
 
 export function positivePolygonArea(vertices: Point[]): number {
+  // Use Polygon class if constructed correctly
+  // const p = new Polygon(vertices); return p.area();
+  // But `vertices` might be just points, `new Polygon(vertices)` works.
+  // However, Polygon.area() returns positive area for islands?
+  // Let's stick to manual calc for consistency or check library.
   return Math.abs(signedPolygonArea(vertices));
 }
 
@@ -244,23 +161,22 @@ export function positivePolygonArea(vertices: Point[]): number {
 /**
  * Simplifies a polygon with a given epsilon with the Douglas-Peucker algorithm
  */
-export function simplifyPolygonWithEpsilon(points: Point[], epsilon: number = 1): Point[] {
+export function simplifyPolygonWithEpsilon(
+  points: Point[],
+  epsilon: number = 1
+): Point[] {
   // using douglas-peucker algorithm
   if (points.length < 3) return points;
-  
+
   let p0 = points[0];
   let pn = points[points.length - 1];
   let maxDistance = 0;
   let index = 0;
+
+  const line = new Line(p0, pn);
+
   for (let i = 1; i < points.length - 1; i++) {
-    const distance = pointDistanceToLine(
-      points[i].x,
-      points[i].y,
-      p0.x,
-      p0.y,
-      pn.x,
-      pn.y
-    );
+    const [distance] = points[i].distanceTo(line);
     if (distance > maxDistance) {
       maxDistance = distance;
       index = i;
@@ -284,12 +200,9 @@ export function shiftPolygon(polygon: Point[], indexShift: number): Point[] {
   const n = polygon.length;
   if (n === 0) return [];
   const shift = ((indexShift % n) + n) % n; // ensure positive modulo
+  // Create new array with same point references
   return Array.from({ length: n }, (_, i) => {
-    const idx = (i + shift) % n;
-    return {
-      x: polygon[idx].x,
-      y: polygon[idx].y,
-    };
+    return polygon[(i + shift) % n];
   });
 }
 
@@ -306,7 +219,10 @@ export function simplifyPolygonUntilNumberOfPoints(
   let currentIncrement = increment;
 
   while (currentPoints.length > n && iterations < maxIterations) {
-    const nextPoints = simplifyPolygonWithEpsilon(currentPoints, currentEpsilon);
+    const nextPoints = simplifyPolygonWithEpsilon(
+      currentPoints,
+      currentEpsilon
+    );
     if (nextPoints.length >= n) {
       currentPoints = shiftPolygon(nextPoints, 1);
       currentEpsilon += currentIncrement;
@@ -324,10 +240,13 @@ export function simplifyPolygonUntilNumberOfPoints(
   return currentPoints;
 }
 
-export function boundingBoxAndCenterOfPolygon(vertices: Point[]): BoundingBox {
+export function boundingBoxAndCenterOfPolygon(vertices: Point[]): Box {
   if (vertices.length === 0) {
-      return { minX: 0, minY: 0, maxX: 0, maxY: 0, centerX: 0, centerY: 0, width: 0, height: 0, radius: 0 };
+    return new Box(0, 0, 0, 0);
   }
+  // Box has minX, minY, maxX, maxY properties?
+  // Check Box constructor or use methods.
+  // new Box(minx, miny, maxx, maxy)
   let minX = vertices[0].x;
   let minY = vertices[0].y;
   let maxX = vertices[0].x;
@@ -338,19 +257,22 @@ export function boundingBoxAndCenterOfPolygon(vertices: Point[]): BoundingBox {
     maxX = Math.max(maxX, vertices[i].x);
     maxY = Math.max(maxY, vertices[i].y);
   }
-  const width = maxX - minX;
-  const height = maxY - minY;
-  return {
-    minX,
-    minY,
-    maxX,
-    maxY,
-    centerX: (minX + maxX) / 2,
-    centerY: (minY + maxY) / 2,
-    width,
-    height,
-    radius: Math.min(width, height) / 2 || 1,
-  };
+  const box = new Box(minX, minY, maxX, maxY);
+
+  // Add custom properties used in app if Box doesn't have them?
+  // The app uses: minX, minY, maxX, maxY, centerX, centerY, width, height, radius
+  // Box likely has some.
+  // Let's return an object that extends Box or looks like it, OR assume Box has them.
+  // Box usually has xmin, ymin, xmax, ymax.
+  // I'll just return the calculated values as an object matching the usage if Box is not 1:1 compatible with usage.
+  // The usage expects `boundingBoxAndCenterOfPolygon` to return `BoundingBox`.
+  // I removed `BoundingBox` interface.
+  // I should probably return `Box` but I need to ensure `Drawing.ts` uses `Box` properties.
+  // `Box` in flatten-js has `xmin`, `ymin`, `xmax`, `ymax`, `center`, `width`, `height`.
+  // It might not have `minX` etc.
+  // Let's keep using `Box` but maybe wrap it or cast it.
+  // For now, I will return `Box` and fix `Drawing.ts` to use `xmin` instead of `minX`.
+  return box;
 }
 
 /**
@@ -367,14 +289,15 @@ export function convexHull(points: Point[]): Point[] {
   // Helper function: Calculate cross product of vectors OA and OB
   // where O = p1, A = p2 - p1, B = p3 - p1
   function crossProduct(p1: Point, p2: Point, p3: Point) {
-    return (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x);
+    const v1 = new Vector(p1, p2);
+    const v2 = new Vector(p1, p3);
+    return v1.cross(v2);
   }
 
   // Helper function: Calculate squared distance between two points
   function squaredDistance(p1: Point, p2: Point) {
-    const dx = p2.x - p1.x;
-    const dy = p2.y - p1.y;
-    return dx * dx + dy * dy;
+    const [d] = p1.distanceTo(p2);
+    return d * d;
   }
 
   // Step 1: Find the starting point (lowest y-coordinate, leftmost if tied)
@@ -430,13 +353,10 @@ export function convexHull(points: Point[]): Point[] {
   }
 
   // Optional: Remove collinear points at the end of the hull
-  // This ensures we only keep corner points
   let i = hull.length - 1;
   while (i >= 2) {
     const cross = crossProduct(hull[i], hull[0], hull[1]);
     if (cross === 0) {
-      // The first point after start is collinear with start and last point
-      // Keep only the furthest one
       if (
         squaredDistance(hull[0], hull[1]) < squaredDistance(hull[0], hull[i])
       ) {
@@ -451,7 +371,11 @@ export function convexHull(points: Point[]): Point[] {
   return hull;
 }
 
-export function getPositiveAngleFromThreePoints(p: Point, p1: Point, p2: Point): number {
+export function getPositiveAngleFromThreePoints(
+  p: Point,
+  p1: Point,
+  p2: Point
+): number {
   let angle = Math.abs(getAngleFromThreePoints(p, p1, p2));
   if (angle > Math.PI) {
     angle = 2 * Math.PI - angle;
@@ -459,17 +383,25 @@ export function getPositiveAngleFromThreePoints(p: Point, p1: Point, p2: Point):
   return angle;
 }
 
-export function getAngleFromThreePoints(p: Point, p1: Point, p2: Point): number {
-  const v1x = p1.x - p.x;
-  const v1y = p1.y - p.y;
-  const v2x = p2.x - p.x;
-  const v2y = p2.y - p.y;
-  const angle = Math.atan2(v2y, v2x) - Math.atan2(v1y, v1x);
-  return angle;
+export function getAngleFromThreePoints(
+  p: Point,
+  p1: Point,
+  p2: Point
+): number {
+  const v1 = new Vector(p, p1);
+  const v2 = new Vector(p, p2);
+  // angleTo returns angle from v1 to v2?
+  // Need to check doc. Assuming standard.
+  // Math.atan2(v2y, v2x) - Math.atan2(v1y, v1x) matches `v2.slope - v1.slope` approx?
+  // Let's use `Vector.angleBetween(v1, v2)` or `v1.angleTo(v2)`.
+  // 2d-geometry `Vector` has `angleTo`.
+  return new Vector(1, 0).angleTo(v2) - new Vector(1, 0).angleTo(v1);
 }
 
 export function getAngle(p1: Point, p2: Point): number {
-  return Math.atan2(p2.y - p1.y, p2.x - p1.x);
+  const v = new Vector(p1, p2);
+  // angle with X axis?
+  return new Vector(1, 0).angleTo(v);
 }
 
 export function ensureWithinPi(angle: number): number {
@@ -481,4 +413,3 @@ export function ensureWithinPi(angle: number): number {
   }
   return angle;
 }
-

@@ -4,6 +4,7 @@
     "": {
       "name": "drawing-plus-plus",
       "dependencies": {
+        "2d-geometry": "^3.0.0",
         "lodash": "^4.17.21",
         "p5": "^1.11.0",
       },
@@ -18,6 +19,8 @@
     },
   },
   "packages": {
+    "2d-geometry": ["2d-geometry@3.0.0", "", {}, "sha512-6yF9p89QaGywFsC70LJgvFTBjS3O7aq3EV43of+m7QbF+Z/wMiIST6i5UFpZ+iT1mWSiSzoXzOq0yp42idWX8g=="],
+
     "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.25.12", "", { "os": "aix", "cpu": "ppc64" }, "sha512-Hhmwd6CInZ3dwpuGTF8fJG6yoWmsToE+vYgD4nytZVxcu1ulHpUQRAB1UJ8+N1Am3Mz4+xOByoQoSZf4D+CpkA=="],
 
     "@esbuild/android-arm": ["@esbuild/android-arm@0.25.12", "", { "os": "android", "cpu": "arm" }, "sha512-VJ+sKvNA/GE7Ccacc9Cha7bpS8nyzVv0jdVgwNDaR4gDMC/2TTRc33Ip8qrNYUcpkOHUT5OZ0bUcNNVZQ9RLlg=="],
