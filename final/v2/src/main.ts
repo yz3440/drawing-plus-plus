@@ -4,6 +4,9 @@ import { Drawing } from './classes/Drawing';
 import { Pie } from './classes/Pie';
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from './constants';
 
+// @ts-ignore
+window.p5 = p5;
+
 const sketch = (p: p5) => {
   let currentDrawing: Drawing | null = null;
   let drawings: Drawing[] = [];
@@ -18,6 +21,7 @@ const sketch = (p: p5) => {
    */
   p.setup = () => {
     let canvas = p.createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
+    p.frameRate(60);
     canvas.parent('canvas-container');
 
     p.background(0);
@@ -113,4 +117,7 @@ const sketch = (p: p5) => {
   }
 };
 
-new p5(sketch);
+// Dynamically import p5.sound to ensure p5 is available globally
+import('p5/lib/addons/p5.sound').then(() => {
+  new p5(sketch);
+});

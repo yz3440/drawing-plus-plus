@@ -154,6 +154,14 @@ export function positivePolygonArea(vertices: Point[]): number {
   return Math.abs(signedPolygonArea(vertices));
 }
 
+export function polygonLength(vertices: Point[]): number {
+  let length = 0;
+  for (let i = 0; i < vertices.length; i++) {
+    length += dist(vertices[i], vertices[(i + 1) % vertices.length]);
+  }
+  return length;
+}
+
 /**
  * MARK: Simplification
  */
@@ -423,37 +431,21 @@ export function getWave(
   polygonPoints: Point[],
   trianglePoints: [Point, Point, Point]
 ): WaveSamplePoint[] {
-  const origin = new Point(0, 0);
+  const [tp1, tp2, tp3] = trianglePoints;
 
-  // shift the triangle vertices so that it starts at the smallest angle tip point
-  const shiftedTrianglePoints = shiftPolygon(
-    trianglePoints,
-    trianglePoints.findIndex((p) => p.equalTo(origin))
-  );
+  console.log('polygonPoints', polygonPoints);
 
-  const [tp1, tp2, tp3] = shiftedTrianglePoints;
-
-  const shiftedPolygonPoints = shiftPolygon(
-    polygonPoints,
-    polygonPoints.findIndex((p) => p.equalTo(origin))
-  );
-
-  console.log('shiftedPolygonPoints', shiftedPolygonPoints);
-
-  const secondTrianglePtPolygonIndex = shiftedPolygonPoints.findIndex((p) =>
+  const secondTrianglePtPolygonIndex = polygonPoints.findIndex((p) =>
     p.equalTo(tp2)
   );
 
-  const thirdTrianglePtPolygonIndex = shiftedPolygonPoints.findIndex((p) =>
+  const thirdTrianglePtPolygonIndex = polygonPoints.findIndex((p) =>
     p.equalTo(tp3)
   );
 
-  console.log('shiftedTrianglePoints', shiftedTrianglePoints);
+  console.log('trianglePoints', trianglePoints);
 
-  const firstEdgePts = shiftedPolygonPoints.slice(
-    0,
-    secondTrianglePtPolygonIndex + 1
-  );
+  const firstEdgePts = polygonPoints.slice(0, secondTrianglePtPolygonIndex + 1);
   const firstEdgeLineSegment: [Point, Point] = [tp1, tp2];
   const firstEdgeLength = dist(tp1, tp2);
   const firstEdgeWaveSamples = firstEdgePts
@@ -465,7 +457,7 @@ export function getWave(
   console.log('firstEdgePts', firstEdgePts);
   console.log('firstEdgeWaveSamples', firstEdgeWaveSamples);
 
-  const secondEdgePts = shiftedPolygonPoints.slice(
+  const secondEdgePts = polygonPoints.slice(
     secondTrianglePtPolygonIndex,
     thirdTrianglePtPolygonIndex + 1
   );
@@ -480,9 +472,9 @@ export function getWave(
   console.log('secondEdgePts', secondEdgePts);
   console.log('secondEdgeWaveSamples', secondEdgeWaveSamples);
 
-  const thirdEdgePts = shiftedPolygonPoints
-    .slice(thirdTrianglePtPolygonIndex, shiftedPolygonPoints.length)
-    .concat([shiftedPolygonPoints[0]]);
+  const thirdEdgePts = polygonPoints
+    .slice(thirdTrianglePtPolygonIndex, polygonPoints.length)
+    .concat([polygonPoints[0]]);
 
   const thirdEdgeLineSegment: [Point, Point] = [tp3, tp1];
   const thirdEdgeLength = dist(tp3, tp1);
@@ -499,7 +491,62 @@ export function getWave(
     ...firstEdgeWaveSamples,
     ...secondEdgeWaveSamples,
     ...thirdEdgeWaveSamples,
-  ];
+  ].map((sample) => ({
+    ...sample,
+    amplitude: Math.pow(sample.amplitude, 3),
+  }));
+}
+
+export function generateWaveBuffer(
+  waveSamples: WaveSamplePoint[],
+  sampleRate: number = 44100
+): Float32Array {
+  if (waveSamples.length < 2) {
+    return new Float32Array(sampleRate);
+  }
+
+  const sortedSamples = [...waveSamples].sort((a, b) => a.t - b.t);
+
+  const totalLength = sortedSamples[sortedSamples.length - 1].t;
+  const buffer = new Float32Array(sampleRate);
+
+  let maxAmp = 0;
+  for (const s of sortedSamples) {
+    maxAmp = Math.max(maxAmp, Math.abs(s.amplitude));
+  }
+  // Avoid division by zero and large amplification of noise
+  const scale = maxAmp > 0.001 ? 0.95 / maxAmp : 0;
+
+  let currentSampleIdx = 0;
+
+  for (let i = 0; i < sampleRate; i++) {
+    const t = (i / sampleRate) * totalLength;
+
+    while (
+      currentSampleIdx < sortedSamples.length - 1 &&
+      sortedSamples[currentSampleIdx + 1].t < t
+    ) {
+      currentSampleIdx++;
+    }
+
+    const p1 = sortedSamples[currentSampleIdx];
+    const p2 = sortedSamples[currentSampleIdx + 1] || p1;
+
+    if (p1 === p2) {
+      buffer[i] = p1.amplitude * scale;
+      continue;
+    }
+
+    const segmentLen = p2.t - p1.t;
+    const segmentProgress = segmentLen > 0 ? (t - p1.t) / segmentLen : 0;
+
+    // Cosine interpolation for smoother results
+    const mu2 = (1 - Math.cos(segmentProgress * Math.PI)) / 2;
+    const amp = p1.amplitude * (1 - mu2) + p2.amplitude * mu2;
+    buffer[i] = amp * scale;
+  }
+
+  return buffer;
 }
 
 export function projectPointOntoLineSegment(

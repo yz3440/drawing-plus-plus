@@ -1,5 +1,10 @@
 import p5 from 'p5';
-import { CANVAS_HEIGHT, GRAVITY, TRIANGULARITY_THRESHOLD } from '../constants';
+import {
+  CANVAS_HEIGHT,
+  GRAVITY,
+  TRIANGULARITY_THRESHOLD,
+  BPM,
+} from '../constants';
 import {
   Point,
   extractFirstPolygon,
@@ -15,6 +20,9 @@ import {
   getAngle,
   getWave,
   WaveSamplePoint,
+  generateWaveBuffer,
+  shiftPolygon,
+  polygonLength,
 } from '../util';
 
 export class Drawing {
@@ -40,11 +48,14 @@ export class Drawing {
   triangularity: number;
   areaOfFirstPolygon: number;
   areadOfSimplifiedTriangle: number;
+  lengthOfSimplifiedTriangle: number;
   smallestAngle: number;
   smallestAngleTipPoint: Point | null;
   initialRotation: number;
   startAngle: number;
   wave: WaveSamplePoint[] | null = null;
+  audioSources: (AudioBufferSourceNode | OscillatorNode)[] = [];
+  gainNode: GainNode | null = null;
 
   constructor(p: p5) {
     this.p = p;
@@ -73,6 +84,7 @@ export class Drawing {
     this.triangularity = 0;
     this.areaOfFirstPolygon = 0;
     this.areadOfSimplifiedTriangle = 0;
+    this.lengthOfSimplifiedTriangle = 0;
     this.smallestAngle = 0;
     this.smallestAngleTipPoint = null;
     this.initialRotation = 0;
@@ -139,6 +151,9 @@ export class Drawing {
     this.areadOfSimplifiedTriangle = positivePolygonArea(
       this.simplifiedTrianglePoints
     );
+    this.lengthOfSimplifiedTriangle = polygonLength(
+      this.simplifiedTrianglePoints
+    );
 
     const areaOfConvexHull = positivePolygonArea(convexHullPoints);
     this.triangularity = areaOfConvexHull / this.areadOfSimplifiedTriangle;
@@ -186,19 +201,28 @@ export class Drawing {
 
       this.points = this.points.map((p) => p.translate(tx, ty));
       if (this.firstPolygonPoints) {
-        this.firstPolygonPoints = this.firstPolygonPoints.map((p) =>
-          p.translate(tx, ty)
-        );
+        this.firstPolygonPoints = shiftPolygon(
+          this.firstPolygonPoints,
+          this.firstPolygonPoints.findIndex((p) =>
+            p.equalTo(this.smallestAngleTipPoint!)
+          )
+        ).map((p) => p.translate(tx, ty));
       }
       if (this.simplifiedPoints) {
-        this.simplifiedPoints = this.simplifiedPoints.map((p) =>
-          p.translate(tx, ty)
-        );
+        this.simplifiedPoints = shiftPolygon(
+          this.simplifiedPoints,
+          this.simplifiedPoints.findIndex((p) =>
+            p.equalTo(this.smallestAngleTipPoint!)
+          )
+        ).map((p) => p.translate(tx, ty));
       }
       if (this.simplifiedTrianglePoints) {
-        this.simplifiedTrianglePoints = this.simplifiedTrianglePoints.map((p) =>
-          p.translate(tx, ty)
-        );
+        this.simplifiedTrianglePoints = shiftPolygon(
+          this.simplifiedTrianglePoints,
+          this.simplifiedTrianglePoints.findIndex((p) =>
+            p.equalTo(this.smallestAngleTipPoint!)
+          )
+        ).map((p) => p.translate(tx, ty));
       }
 
       this.wave = getWave(
@@ -206,6 +230,62 @@ export class Drawing {
         this.simplifiedTrianglePoints as [Point, Point, Point]
       );
       console.log('wave', this.wave);
+
+      if (this.wave) {
+        const bufferData = generateWaveBuffer(this.wave);
+        const ctx = this.p.getAudioContext() as unknown as AudioContext;
+        const audioBuffer = ctx.createBuffer(1, bufferData.length, 44100);
+        audioBuffer.copyToChannel(bufferData as any, 0);
+
+        this.gainNode = ctx.createGain();
+        this.gainNode.gain.value = 1.0;
+        this.gainNode.connect(ctx.destination);
+
+        // AM Synthesis: Use the shape to modulate the volume of an audible tone
+        // This allows the shape to be heard as a rhythmic pattern.
+        // The duration of the pattern is proportional to the perimeter of the simplified triangle.
+
+        // 1. Carrier (The audible tone)
+        const carrier = ctx.createOscillator();
+        carrier.type = 'sine';
+        carrier.frequency.value = 220;
+        carrier.start();
+
+        // 2. Modulator (The Shape - Rhythm)
+        const modulator = ctx.createBufferSource();
+        modulator.buffer = audioBuffer;
+        modulator.loop = true;
+
+        // Calculate duration based on lengthOfSimplifiedTriangle
+        // Let's say 1000 pixels perimeter = 1 bar (2 seconds at 120 BPM)
+        // Adjust scaling factor as needed
+        const referencePerimeter = 1000;
+        const barDuration = (60 / BPM) * 4; // 2 seconds
+        const loopDuration =
+          (this.lengthOfSimplifiedTriangle / referencePerimeter) * barDuration;
+
+        // buffer is 1 second long
+        // rate = 1 / duration
+        modulator.playbackRate.value = 1 / loopDuration;
+
+        modulator.start();
+
+        // 3. VCA (Voltage Controlled Amplifier)
+        const vca = ctx.createGain();
+        vca.gain.value = 0; // Start at silence, let modulator drive amplitude
+
+        carrier.connect(vca);
+        modulator.connect(vca.gain); // The shape controls the volume (Ring Modulation)
+
+        vca.connect(this.gainNode);
+
+        this.audioSources.push(carrier);
+        this.audioSources.push(modulator);
+
+        this.p.userStartAudio();
+
+        this.p.userStartAudio();
+      }
     }
   }
 
@@ -255,6 +335,21 @@ export class Drawing {
         this.p.vertex(
           this.firstPolygonPoints[i].x,
           this.firstPolygonPoints[i].y
+        );
+      }
+      this.p.endShape(this.p.CLOSE);
+      this.p.pop();
+    }
+
+    if (this.simplifiedTrianglePoints) {
+      this.p.push();
+      this.p.noFill();
+      this.p.stroke(0, 255, 0, 200);
+      this.p.beginShape();
+      for (let i = 0; i < this.simplifiedTrianglePoints.length; i++) {
+        this.p.vertex(
+          this.simplifiedTrianglePoints[i].x,
+          this.simplifiedTrianglePoints[i].y
         );
       }
       this.p.endShape(this.p.CLOSE);
