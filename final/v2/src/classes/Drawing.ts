@@ -99,18 +99,20 @@ export class Drawing {
       return;
     }
 
-    firstPolygonPoints = _.flow([ensureCounterClockwise, ensureCyclic])(
-      firstPolygonPoints
+    firstPolygonPoints = ensureCyclic(
+      ensureCounterClockwise(firstPolygonPoints)
     );
 
     // Simplify first polygon to 3 points
+
     const bbOfFirstPolygon = boundingBoxAndCenterOfPolygon(firstPolygonPoints);
     this.firstPolygonPoints = firstPolygonPoints;
     this.areaOfFirstPolygon = positivePolygonArea(firstPolygonPoints);
     const convexHullPoints = convexHull(this.firstPolygonPoints);
 
     // radius calculation
-    const radius = Math.min(bbOfFirstPolygon.width, bbOfFirstPolygon.height) / 2 || 1;
+    const radius =
+      Math.min(bbOfFirstPolygon.width, bbOfFirstPolygon.height) / 2 || 1;
 
     this.simplifiedPoints = simplifyPolygonWithEpsilon(
       convexHullPoints,
@@ -122,10 +124,9 @@ export class Drawing {
       radius * 0.1,
       radius * 0.1 * 0.1
     );
-    this.simplifiedTrianglePoints = _.flow([
-      ensureCounterClockwise,
-      ensureNonCyclic,
-    ])(this.simplifiedTrianglePoints);
+    this.simplifiedTrianglePoints = ensureNonCyclic(
+      ensureCounterClockwise(this.simplifiedTrianglePoints)
+    );
 
     // Check if simplified polygon is a triangle
     if (this.simplifiedTrianglePoints.length !== 3) {
@@ -176,21 +177,26 @@ export class Drawing {
     if (this.smallestAngleTipPoint) {
       this.shapeTranslationX = this.smallestAngleTipPoint.x;
       this.shapeTranslationY = this.smallestAngleTipPoint.y;
-      
+
       // Use translate method
       const tx = -this.shapeTranslationX;
       const ty = -this.shapeTranslationY;
 
-      this.points = this.points.map(p => p.translate(tx, ty));
+      this.points = this.points.map((p) => p.translate(tx, ty));
       if (this.firstPolygonPoints) {
-        this.firstPolygonPoints = this.firstPolygonPoints.map(p => p.translate(tx, ty));
+        this.firstPolygonPoints = this.firstPolygonPoints.map((p) =>
+          p.translate(tx, ty)
+        );
       }
       if (this.simplifiedPoints) {
-        this.simplifiedPoints = this.simplifiedPoints.map(p => p.translate(tx, ty));
+        this.simplifiedPoints = this.simplifiedPoints.map((p) =>
+          p.translate(tx, ty)
+        );
       }
       if (this.simplifiedTrianglePoints) {
-        this.simplifiedTrianglePoints =
-          this.simplifiedTrianglePoints.map(p => p.translate(tx, ty));
+        this.simplifiedTrianglePoints = this.simplifiedTrianglePoints.map((p) =>
+          p.translate(tx, ty)
+        );
       }
     }
   }
@@ -228,7 +234,7 @@ export class Drawing {
       for (let i = 0; i < this.points.length; i++) {
         this.p.vertex(this.points[i].x, this.points[i].y);
       }
-      this.p.endShape(this.p.OPEN);
+      this.p.endShape();
       this.p.pop();
     }
 
