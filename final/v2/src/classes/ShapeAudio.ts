@@ -1,6 +1,7 @@
 import p5 from 'p5';
 import { WaveSamplePoint, generateWaveBuffer } from '../util';
 import { settings } from '../constants';
+import { Metronome } from './Metronome';
 
 export interface ShapeAudioConfig {
   wave: WaveSamplePoint[];
@@ -11,6 +12,7 @@ export interface ShapeAudioConfig {
 /**
  * Handles audio synthesis for a triangle shape.
  * Uses AM synthesis where the shape's wave modulates a carrier tone.
+ * Syncs to the global Metronome for synchronized playback.
  */
 export class ShapeAudio {
   private p: p5;
@@ -19,9 +21,10 @@ export class ShapeAudio {
   private modulator: AudioBufferSourceNode | null = null;
   private referencePerimeter: number;
   private perimeter: number;
+  private lastBPM: number = 0;
 
-  loopDuration: number = 0;
-  startTime: number = 0;
+  /** Loop duration in bars (power of two: 0.25, 0.5, 1, 2, 4, ...) */
+  loopBars: number = 1;
   wave: WaveSamplePoint[];
 
   constructor(p: p5, config: ShapeAudioConfig) {
@@ -29,6 +32,11 @@ export class ShapeAudio {
     this.wave = config.wave;
     this.perimeter = config.perimeter;
     this.referencePerimeter = config.referencePerimeter ?? 1000;
+
+    // Calculate loop duration in bars (snapped to power of two)
+    const perimeterRatio = this.perimeter / this.referencePerimeter;
+    this.loopBars = Math.pow(2, Math.round(Math.log2(perimeterRatio)));
+    console.log('loopBars (power of 2):', this.loopBars);
 
     this.initAudio();
   }
@@ -46,7 +54,6 @@ export class ShapeAudio {
     this.gainNode.connect(ctx.destination);
 
     // AM Synthesis: Shape modulates the volume of an audible tone
-    // This allows the shape to be heard as a rhythmic pattern
 
     // 1. Carrier (The audible tone)
     const carrier = ctx.createOscillator();
@@ -59,16 +66,10 @@ export class ShapeAudio {
     modulator.buffer = audioBuffer;
     modulator.loop = true;
 
-    // Calculate duration based on perimeter
-    // 1000 pixels perimeter = 1 bar (varies with BPM)
-    const barDuration = (60 / settings.BPM) * 4;
-    // Snap perimeter ratio to closest power of two (0.25, 0.5, 1, 2, 4, ...)
-    const perimeterRatio = this.perimeter / this.referencePerimeter;
-    const snappedRatio = Math.pow(2, Math.round(Math.log2(perimeterRatio)));
-    console.log('snappedRatio', snappedRatio);
-    const loopDuration = snappedRatio * barDuration;
-    this.loopDuration = loopDuration;
-    this.startTime = this.p.millis() / 1000;
+    // Calculate loop duration in seconds based on bars and current BPM
+    const barDuration = Metronome.getBarDuration();
+    const loopDuration = this.loopBars * barDuration;
+    this.lastBPM = settings.BPM;
 
     // Buffer is 1 second long, rate = 1 / duration
     modulator.playbackRate.value = 1 / loopDuration;
@@ -91,27 +92,33 @@ export class ShapeAudio {
 
   /**
    * Updates audio parameters in response to settings changes (e.g., BPM).
+   * Call this every frame.
    */
   updateParams(): void {
-    if (!this.modulator || this.loopDuration <= 0) return;
+    if (!this.modulator) return;
 
-    // Recalculate loop duration based on new BPM
-    const barDuration = (60 / settings.BPM) * 4;
-    const loopDuration =
-      (this.perimeter / this.referencePerimeter) * barDuration;
-
-    this.loopDuration = loopDuration;
-    this.modulator.playbackRate.value = 1 / loopDuration;
+    // Only update if BPM changed
+    if (settings.BPM !== this.lastBPM) {
+      const barDuration = Metronome.getBarDuration();
+      const loopDuration = this.loopBars * barDuration;
+      this.modulator.playbackRate.value = 1 / loopDuration;
+      this.lastBPM = settings.BPM;
+    }
   }
 
   /**
    * Gets the current progress through the loop (0-1).
+   * Uses the global Metronome for synchronized playback.
    */
   getProgress(currentTimeMs: number): number {
-    if (this.loopDuration <= 0) return 0;
-    const currentTime = currentTimeMs / 1000;
-    const elapsedTime = currentTime - this.startTime;
-    return (elapsedTime % this.loopDuration) / this.loopDuration;
+    return Metronome.getProgress(currentTimeMs, this.loopBars);
+  }
+
+  /**
+   * Gets the loop duration in seconds at current BPM.
+   */
+  getLoopDuration(): number {
+    return this.loopBars * Metronome.getBarDuration();
   }
 
   /**

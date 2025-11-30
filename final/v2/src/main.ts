@@ -2,6 +2,7 @@ import p5 from 'p5';
 import './style.css';
 import { Drawing } from './classes/Drawing';
 import { Pie } from './classes/Pie';
+import { Metronome } from './classes/Metronome';
 import { CANVAS_WIDTH, CANVAS_HEIGHT, settings } from './constants';
 import * as dat from 'dat.gui';
 
@@ -37,6 +38,9 @@ const sketch = (p: p5) => {
   };
 
   p.draw = () => {
+    // Update global metronome (handles BPM changes)
+    Metronome.update(p.millis());
+
     p.background(0);
     p.cursor(p.CROSS);
 
