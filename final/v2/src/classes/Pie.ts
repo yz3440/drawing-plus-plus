@@ -1,48 +1,76 @@
 import p5 from 'p5';
 import { Drawing } from './Drawing';
 import { ensureWithinPi } from '../util';
+import { CANVAS_WIDTH, CANVAS_HEIGHT } from '../constants';
 
-export class Pie {
-  p: p5;
-  x: number;
-  y: number;
-  radius: number;
-  startAngle: number;
-  endAngle: number;
-  occupiedAngle: number;
-  scale: number;
-  drawings: Drawing[];
+/**
+ * Singleton Pie that holds all triangle drawings arranged radially.
+ * Can grow beyond 360 degrees (drawings stack in layers).
+ */
+class PieClass {
+  private _p: p5 | null = null;
+  x: number = 0;
+  y: number = 0;
+  radius: number = 0;
+  startAngle: number = 0;
+  endAngle: number = 0;
+  occupiedAngle: number = 0;
+  scale: number = 1;
+  drawings: Drawing[] = [];
 
-  constructor(p: p5, x: number, y: number) {
-    this.p = p;
-    this.x = x;
-    this.y = y;
+  /**
+   * Initialize the singleton with p5 instance and position.
+   * Must be called once before using the Pie.
+   */
+  init(p: p5, x?: number, y?: number): void {
+    this._p = p;
+    this.x = x ?? CANVAS_WIDTH / 2;
+    this.y = y ?? CANVAS_HEIGHT / 2;
     this.radius = 0;
     this.startAngle = 0;
     this.endAngle = 0;
     this.occupiedAngle = 0;
     this.scale = 1;
-
     this.drawings = [];
   }
 
-  canAddDrawing(drawing: Drawing) {
-    return this.occupiedAngle + drawing.smallestAngle <= Math.PI * 2;
+  private get p(): p5 {
+    if (!this._p) {
+      throw new Error('Pie not initialized. Call Pie.init(p) first.');
+    }
+    return this._p;
   }
 
-  addDrawing(drawing: Drawing) {
+  addDrawing(drawing: Drawing): void {
     drawing.startAngle = this.occupiedAngle;
     this.occupiedAngle += drawing.smallestAngle;
-
     this.drawings.push(drawing);
   }
 
-  draw() {
+  removeDrawing(drawing: Drawing): void {
+    const index = this.drawings.indexOf(drawing);
+    if (index !== -1) {
+      drawing.dispose();
+      this.drawings.splice(index, 1);
+      // Recalculate angles for remaining drawings
+      this.recalculateAngles();
+    }
+  }
+
+  private recalculateAngles(): void {
+    this.occupiedAngle = 0;
+    for (const drawing of this.drawings) {
+      drawing.startAngle = this.occupiedAngle;
+      this.occupiedAngle += drawing.smallestAngle;
+    }
+  }
+
+  draw(): void {
     const rotationLerpFactor = 0.05;
     const scaleLerpFactor = 0.2;
     const translationLerpFactor = 0.1;
 
-    for (let drawing of this.drawings) {
+    for (const drawing of this.drawings) {
       drawing.rotation = this.p.lerp(
         drawing.rotation,
         ensureWithinPi(-drawing.startAngle - drawing.initialRotation),
@@ -63,3 +91,6 @@ export class Pie {
     }
   }
 }
+
+// Singleton instance
+export const Pie = new PieClass();

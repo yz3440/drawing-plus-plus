@@ -3,6 +3,23 @@ import { WaveSamplePoint, generateWaveBuffer } from '../util';
 import { settings } from '../constants';
 import { Metronome } from './Metronome';
 
+/**
+ * Snaps a ratio to the nearest integer ratio.
+ * For ratios >= 1: returns 1, 2, 3, 4, 5, ...
+ * For ratios < 1: returns 1/2, 1/3, 1/4, 1/5, ...
+ */
+function snapToIntegerRatio(ratio: number): number {
+  if (ratio >= 1) {
+    // Snap to nearest integer (1, 2, 3, 4, ...)
+    return Math.max(1, Math.round(ratio));
+  } else {
+    // Snap to nearest 1/n (1/2, 1/3, 1/4, ...)
+    const inverseRatio = 1 / ratio;
+    const n = Math.max(2, Math.round(inverseRatio));
+    return 1 / n;
+  }
+}
+
 export interface ShapeAudioConfig {
   wave: WaveSamplePoint[];
   perimeter: number;
@@ -23,7 +40,7 @@ export class ShapeAudio {
   private perimeter: number;
   private lastBPM: number = 0;
 
-  /** Loop duration in bars (power of two: 0.25, 0.5, 1, 2, 4, ...) */
+  /** Loop duration in bars (1/3, 1/2, 1, 2, 3, ...) */
   loopBars: number = 1;
   wave: WaveSamplePoint[];
 
@@ -33,10 +50,10 @@ export class ShapeAudio {
     this.perimeter = config.perimeter;
     this.referencePerimeter = config.referencePerimeter ?? 1000;
 
-    // Calculate loop duration in bars (snapped to power of two)
+    // Calculate loop duration in bars (snapped to integer ratio)
     const perimeterRatio = this.perimeter / this.referencePerimeter;
-    this.loopBars = Math.pow(2, Math.round(Math.log2(perimeterRatio)));
-    console.log('loopBars (power of 2):', this.loopBars);
+    this.loopBars = snapToIntegerRatio(perimeterRatio);
+    console.log('loopBars:', this.loopBars);
 
     this.initAudio();
   }

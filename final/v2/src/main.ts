@@ -11,22 +11,21 @@ window.p5 = p5;
 
 const sketch = (p: p5) => {
   let currentDrawing: Drawing | null = null;
-  let drawings: Drawing[] = [];
-
-  let currentPie = new Pie(p, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
-  let pies: Pie[] = [];
-  let pieShelfX = 100;
-  let pieShelfY = 100;
+  let drawings: Drawing[] = []; // Non-triangle drawings (falling)
+  let hoveredDrawing: Drawing | null = null;
 
   /*
    * MARK: P5.js sketch
    */
   p.setup = () => {
-    let canvas = p.createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
+    const canvas = p.createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
     p.frameRate(60);
     canvas.parent('canvas-container');
 
     p.background(0);
+
+    // Initialize Pie singleton
+    Pie.init(p, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
 
     // Initialize dat.gui
     const gui = new dat.GUI();
@@ -42,25 +41,22 @@ const sketch = (p: p5) => {
     Metronome.update(p.millis());
 
     p.background(0);
-    p.cursor(p.CROSS);
 
-    const allPies = [...pies, currentPie].filter(
-      (pie): pie is Pie => pie !== null
-    );
-    for (let pie of allPies) {
-      pie.draw();
-    }
+    // Draw the Pie (all triangle drawings)
+    Pie.draw();
 
     p.background(0, 0, 0, 100);
 
+    // Draw non-triangle drawings
     const allDrawings: Drawing[] = [...drawings];
     if (currentDrawing) {
       allDrawings.push(currentDrawing);
     }
 
-    for (let drawing of allDrawings) {
+    for (const drawing of allDrawings) {
       drawing.draw();
     }
+
     // Remove drawings that are off screen
     allDrawings
       .filter((drawing) => drawing.isOffScreen())
@@ -70,13 +66,90 @@ const sketch = (p: p5) => {
           drawings.splice(idx, 1);
         }
       });
+
+    // Update cursor based on hover state
+    updateCursor();
   };
 
+  /**
+   * Updates the cursor and highlight state based on hover.
+   */
+  function updateCursor(): void {
+    // Clear previous highlight
+    if (hoveredDrawing) {
+      hoveredDrawing.highlighted = false;
+    }
+
+    if (currentDrawing) {
+      // Currently drawing - show crosshair
+      p.cursor(p.CROSS);
+      hoveredDrawing = null;
+      return;
+    }
+
+    // Check if mouse is over any drawing in the Pie
+    hoveredDrawing = findDrawingUnderMouse(p.mouseX, p.mouseY);
+
+    if (hoveredDrawing) {
+      // Highlight the hovered drawing
+      hoveredDrawing.highlighted = true;
+
+      // Show pointer cursor
+      const canvas = document.querySelector('#canvas-container canvas');
+      if (canvas) {
+        (canvas as HTMLElement).style.cursor = 'pointer';
+      }
+    } else {
+      p.cursor(p.CROSS);
+    }
+  }
+
+  /**
+   * Finds the drawing under the mouse position.
+   * If multiple drawings contain the point, returns the one closest to its centroid.
+   */
+  function findDrawingUnderMouse(x: number, y: number): Drawing | null {
+    const candidates: Drawing[] = [];
+
+    // Check all drawings in the Pie
+    for (const drawing of Pie.drawings) {
+      if (drawing.containsPoint(x, y)) {
+        candidates.push(drawing);
+      }
+    }
+
+    if (candidates.length === 0) return null;
+    if (candidates.length === 1) return candidates[0];
+
+    // Multiple candidates - find the closest by centroid distance
+    let closest: Drawing | null = null;
+    let minDist = Infinity;
+
+    for (const drawing of candidates) {
+      const dist = drawing.distanceToCentroid(x, y);
+      if (dist < minDist) {
+        minDist = dist;
+        closest = drawing;
+      }
+    }
+
+    return closest;
+  }
+
   /*
-   * MARK: Drawing
+   * MARK: Drawing & Interaction
    */
 
   p.mousePressed = () => {
+    // Check if we're clicking on an existing drawing to delete it
+    if (!currentDrawing) {
+      const drawingToDelete = findDrawingUnderMouse(p.mouseX, p.mouseY);
+      if (drawingToDelete) {
+        Pie.removeDrawing(drawingToDelete);
+        return; // Don't start a new drawing
+      }
+    }
+
     if (currentDrawing) {
       continueDrawing(p.mouseX, p.mouseY);
     } else {
@@ -94,35 +167,23 @@ const sketch = (p: p5) => {
     stopDrawing();
   };
 
-  function startDrawing(x: number, y: number) {
+  function startDrawing(x: number, y: number): void {
     currentDrawing = new Drawing(p);
     currentDrawing.addPoint(x, y);
   }
 
-  function continueDrawing(x: number, y: number) {
+  function continueDrawing(x: number, y: number): void {
     if (currentDrawing) {
       currentDrawing.addPoint(x, y);
     }
   }
 
-  function stopDrawing() {
+  function stopDrawing(): void {
     if (!currentDrawing) return;
 
     currentDrawing.finishDrawing();
     if (currentDrawing.isTriangle) {
-      if (currentPie.canAddDrawing(currentDrawing)) {
-        console.log('Pie can still add drawing');
-        currentPie.addDrawing(currentDrawing);
-      } else {
-        currentPie.scale = 0.3;
-        const newPie = new Pie(p, currentPie.x, currentPie.y);
-        currentPie.x = pieShelfX;
-        currentPie.y = pieShelfY;
-        pieShelfX += 200;
-        pies.push(currentPie);
-        currentPie = newPie;
-        currentPie.addDrawing(currentDrawing);
-      }
+      Pie.addDrawing(currentDrawing);
     } else {
       drawings.push(currentDrawing);
     }
