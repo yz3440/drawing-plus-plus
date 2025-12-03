@@ -1,5 +1,6 @@
 export const GRAVITY = 1;
 export const AREA_RATIO_THRESHOLD = 0.9; // Default threshold for area preservation
+export const MIN_POLYGON_AREA = 500; // Minimum area for a polygon to be considered valid (to ignore tiny loops)
 
 // Tip selection methods
 export type TipSelectionMethod = 'smallest_angle' | 'closest_edge';

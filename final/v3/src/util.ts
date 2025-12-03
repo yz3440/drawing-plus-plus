@@ -26,21 +26,19 @@ export function pointDistanceToLine(p0: Point, p1: Point, p2: Point): number {
  * MARK: Line
  */
 
-// Main function to extract the first polygon from a path
+import { MIN_POLYGON_AREA } from './constants';
+
+// Main function to extract the first valid polygon from a path
 export function extractFirstPolygon(points: Point[]) {
   const pts = [...points];
-  // Logic from original: if length is 3, push start to end?
-  // But extractFirstPolygon normally deals with finding self-intersection.
-  // If only 3 points, it's a triangle if closed, but here it might be open.
-  // Original code:
-  // if (pts.length === 3) { pts.push(pts[0]); }
-  // else if (pts.length < 4) { return null; }
-
   if (pts.length === 3) {
     pts.push(pts[0].clone());
   } else if (pts.length < 4) {
     return null;
   }
+
+  // Store all found valid polygons to select the best one (e.g. largest area or first valid)
+  // The requirement is: "if too small, continue to try to find the next one"
 
   // Check each pair of line segments for intersection
   for (let i = 0; i < pts.length - 3; i++) {
@@ -67,19 +65,24 @@ export function extractFirstPolygon(points: Point[]) {
 
         // Validate that we have at least 3 unique vertices
         if (polygon.length >= 3) {
-          return {
-            vertices: polygon,
-            startIndex: i,
-            endIndex: j,
-            intersection: intersection,
-            isValid: isValidPolygon(polygon), // We keep using array of points for now as intermediate repr
-          };
+          // Check area
+          const area = positivePolygonArea(polygon);
+          if (area >= MIN_POLYGON_AREA) {
+            return {
+              vertices: polygon,
+              startIndex: i,
+              endIndex: j,
+              intersection: intersection,
+              isValid: isValidPolygon(polygon),
+            };
+          }
+          // If too small, continue searching loop (implicitly does this by not returning)
         }
       }
     }
   }
 
-  return null; // No polygon found
+  return null; // No valid polygon found
 }
 
 export function makeSureCounterClockwise(vertices: Point[]): Point[] {
