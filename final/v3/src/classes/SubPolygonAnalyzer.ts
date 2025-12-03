@@ -3,10 +3,8 @@ import {
   extractFirstPolygon,
   ensureCounterClockwise,
   ensureCyclic,
-  boundingBoxAndCenterOfPolygon,
   positivePolygonArea,
   convexHull,
-  simplifyPolygonWithEpsilon,
   ensureNonCyclic,
   getPositiveAngleFromThreePoints,
   getAngle,
@@ -70,32 +68,33 @@ export class SubPolygonAnalyzer {
       ensureCounterClockwise(firstPolygonPoints)
     );
 
-    // Compute bounding box for epsilon calculations
-    const bbOfFirstPolygon = boundingBoxAndCenterOfPolygon(firstPolygonPoints);
+    // Compute bounding box for epsilon calculations (only used if needed, keeping computation if other logic depends on it later, but here only radius was derived)
+    // const bbOfFirstPolygon = boundingBoxAndCenterOfPolygon(firstPolygonPoints);
     result.firstPolygonPoints = firstPolygonPoints;
     result.areaOfFirstPolygon = positivePolygonArea(firstPolygonPoints);
 
     // Compute convex hull
     const convexHullPoints = convexHull(firstPolygonPoints);
 
-    // Radius calculation for simplification thresholds
-    const radius =
-      Math.min(bbOfFirstPolygon.width, bbOfFirstPolygon.height) / 2 || 1;
-
-    // Simplify polygon (first pass with epsilon)
-    result.simplifiedPoints = simplifyPolygonWithEpsilon(
-      convexHullPoints,
-      radius * 0.1
-    );
+    // No longer presimplifying with epsilon
+    // We use the first polygon directly as the starting point for area-based simplification
+    // This allows us to detect concave shapes that would be lost if we started from the convex hull
+    result.simplifiedPoints = firstPolygonPoints;
 
     // Simplify based on area ratio threshold
     // This replaces "simplifyPolygonUntilNumberOfPoints(..., 3)"
     // We try to simplify to fewer points as long as area ratio is preserved
     const hullArea = positivePolygonArea(convexHullPoints);
-    
+    const firstPolygonArea = result.areaOfFirstPolygon;
+
+    const referenceArea =
+      settings.AREA_CALCULATION_METHOD === 'convex_hull'
+        ? hullArea
+        : firstPolygonArea;
+
     result.finalSimplifiedPoints = simplifyPolygonUntilAreaRatio(
       result.simplifiedPoints,
-      hullArea,
+      referenceArea,
       settings.AREA_RATIO_THRESHOLD
     );
 
@@ -131,24 +130,26 @@ export class SubPolygonAnalyzer {
   /**
    * Finds the tip by selecting the vertex with the smallest interior angle.
    */
-  private static findTipBySmallestAngle(result: SubPolygonAnalysisResult): void {
+  private static findTipBySmallestAngle(
+    result: SubPolygonAnalysisResult
+  ): void {
     if (!result.finalSimplifiedPoints) return;
 
     const n = result.finalSimplifiedPoints.length;
     result.tipAngle = Math.PI;
-    
+
     for (let i = 0; i < n; i++) {
       const pt = result.finalSimplifiedPoints[i];
       const p1 = result.finalSimplifiedPoints[(i + n - 1) % n]; // Previous
       const p2 = result.finalSimplifiedPoints[(i + 1) % n]; // Next
-      
-      const angle = getPositiveAngleFromThreePoints(pt, p2, p1); // Order matters? 
+
+      const angle = getPositiveAngleFromThreePoints(pt, p2, p1); // Order matters?
       // getPositiveAngleFromThreePoints(p, p1, p2) usually means angle at p between p->p1 and p->p2
-      
+
       if (angle < result.tipAngle) {
         result.tipAngle = angle;
         result.tipPoint = pt;
-        // Initial rotation to align tip up? 
+        // Initial rotation to align tip up?
         // This depends on how we want to orient arbitrary polygons.
         // Assuming we want to orient based on the "tip" (smallest angle).
         // Let's align the bisector of the angle or one of the edges?
@@ -157,7 +158,7 @@ export class SubPolygonAnalyzer {
         // So it aligned with the edge "across" or "next"?
         // Let's align so the tip points "up" or similar.
         // For consistency with triangle logic, let's use bisector or just one edge.
-        // Original: `result.initialRotation = getAngle(pt, p1);` 
+        // Original: `result.initialRotation = getAngle(pt, p1);`
         // where p1 was `(i+2)%3` (previous point).
         result.initialRotation = getAngle(pt, p1);
       }
@@ -209,20 +210,25 @@ export class SubPolygonAnalyzer {
     // Find vertex farthest from this edge to be the "tip"
     const edgeStart = pts[closestEdgeIndex];
     const edgeEnd = pts[(closestEdgeIndex + 1) % pts.length];
-    
+
     let maxDist = -1;
     let tipIndex = -1;
 
     for (let i = 0; i < pts.length; i++) {
-      if (i === closestEdgeIndex || i === (closestEdgeIndex + 1) % pts.length) continue;
-      
-      const d = SubPolygonAnalyzer.pointToSegmentDistance(pts[i], edgeStart, edgeEnd);
+      if (i === closestEdgeIndex || i === (closestEdgeIndex + 1) % pts.length)
+        continue;
+
+      const d = SubPolygonAnalyzer.pointToSegmentDistance(
+        pts[i],
+        edgeStart,
+        edgeEnd
+      );
       if (d > maxDist) {
         maxDist = d;
         tipIndex = i;
       }
     }
-    
+
     // Fallback if something weird happens
     if (tipIndex === -1) tipIndex = (closestEdgeIndex + 2) % pts.length;
 
@@ -309,4 +315,3 @@ export class SubPolygonAnalyzer {
     return { tx, ty, translatedPoints };
   }
 }
-

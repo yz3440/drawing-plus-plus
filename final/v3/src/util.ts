@@ -183,6 +183,15 @@ export function simplifyPolygonWithEpsilon(
   let maxDistance = 0;
   let index = 0;
 
+  // Guard: if first and last points are the same (or very close),
+  // Line constructor will throw "Illegal Parameters"
+  const [distBetweenEnds] = p0.distanceTo(pn);
+  if (distBetweenEnds < 0.001) {
+    // Points are essentially the same - can't form a line
+    // Return endpoints only (this is a degenerate case)
+    return [p0, pn];
+  }
+
   const line = new Line(p0, pn);
 
   for (let i = 1; i < points.length - 1; i++) {
