@@ -18,6 +18,19 @@ const sketch = (p: p5) => {
   let drawings: Drawing[] = []; // Non-valid drawings (falling)
   let hoveredDrawing: Drawing | null = null;
 
+  /**
+   * Check if the current event target is within the dat.GUI panel
+   */
+  function isEventOnGui(): boolean {
+    // Access the current event from the window
+    const event = window.event as MouseEvent | undefined;
+    if (!event || !event.target) return false;
+
+    const target = event.target as HTMLElement;
+    // Check if target is inside dat.GUI (has .dg ancestor or is .dg itself)
+    return target.closest('.dg') !== null;
+  }
+
   /*
    * MARK: P5.js sketch
    */
@@ -32,13 +45,13 @@ const sketch = (p: p5) => {
     // Initialize dat.gui
     const gui = new dat.GUI();
     gui.add(settings, 'BPM', 60, 240).step(1).name('BPM');
-    
+
     // Replaced TRIANGULARITY_THRESHOLD with AREA_RATIO_THRESHOLD
     gui
       .add(settings, 'AREA_RATIO_THRESHOLD', 0, 1.0)
       .step(0.01)
       .name('Area Ratio');
-      
+
     gui
       .add(settings, 'TIP_SELECTION_METHOD', TIP_SELECTION_METHODS)
       .name('Tip Selection');
@@ -157,6 +170,8 @@ const sketch = (p: p5) => {
    */
 
   p.mousePressed = () => {
+    if (isEventOnGui()) return;
+
     // Check if we're clicking on an existing drawing to delete it
     if (!currentDrawing) {
       const drawingToDelete = findDrawingUnderMouse(p.mouseX, p.mouseY);
@@ -174,12 +189,16 @@ const sketch = (p: p5) => {
   };
 
   p.mouseDragged = () => {
+    if (isEventOnGui()) return;
+
     if (currentDrawing) {
       continueDrawing(p.mouseX, p.mouseY);
     }
   };
 
   p.mouseReleased = () => {
+    if (isEventOnGui()) return;
+
     stopDrawing();
   };
 
