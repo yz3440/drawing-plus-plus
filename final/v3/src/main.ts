@@ -68,7 +68,23 @@ const sketch = (p: p5) => {
           drawing.updateFMAudio();
         }
       });
-    synthFolder.add(settings, 'BPM', 60, 240).step(1).name('BPM');
+    synthFolder
+      .add(settings, 'BPM', 60, 240)
+      .step(1)
+      .name('BPM')
+      .onChange(() => {
+        // Update all shapes' audio params when BPM changes
+        for (const drawing of polygonDrawings) {
+          drawing.updateAudioParams();
+        }
+      });
+    synthFolder
+      .add(settings, 'VISUAL_ANIMATION_MULTIPLIER', 0, 8)
+      .step(1)
+      .name('Anim Duration')
+      .onChange(() => {
+        // Visual animation multiplier doesn't affect audio, no need to update audio params
+      });
     synthFolder.open();
 
     // Shape detection folder

@@ -45,6 +45,7 @@ export const settings = {
   // Synthesis mode settings
   SYNTHESIS_MODE: 'fm' as SynthesisMode,
   FM_NUM_LINES: 8, // Number of frequency lines in FM mode
+  VISUAL_ANIMATION_MULTIPLIER: 2, // Multiplier for visual animation duration (does not affect audio)
 };
 
 // Dynamic canvas dimensions (will be set by main.ts)

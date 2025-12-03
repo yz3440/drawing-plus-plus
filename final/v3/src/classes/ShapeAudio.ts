@@ -163,6 +163,7 @@ export class ShapeAudio {
     modulator.loop = true;
 
     // Calculate loop duration in seconds based on bars and current BPM
+    // Audio is NOT affected by VISUAL_ANIMATION_MULTIPLIER
     const barDuration = Metronome.getBarDuration();
     const loopDuration = this.loopBars * barDuration;
     this.lastBPM = settings.BPM;
@@ -226,6 +227,7 @@ export class ShapeAudio {
     this.fmModulator.loop = true;
 
     // Calculate loop duration in seconds based on bars and current BPM
+    // Audio is NOT affected by VISUAL_ANIMATION_MULTIPLIER
     const barDuration = Metronome.getBarDuration();
     const loopDuration = this.loopBars * barDuration;
     this.lastBPM = settings.BPM;
@@ -297,15 +299,16 @@ export class ShapeAudio {
       return;
     }
 
-    // Only update if BPM changed
+    // Update if BPM changed (audio is NOT affected by visual animation multiplier)
     if (settings.BPM !== this.lastBPM) {
       const barDuration = Metronome.getBarDuration();
       const loopDuration = this.loopBars * barDuration;
+      const playbackRate = 1 / loopDuration;
 
       if (settings.SYNTHESIS_MODE === 'waveform' && this.modulator) {
-        this.modulator.playbackRate.value = 1 / loopDuration;
+        this.modulator.playbackRate.value = playbackRate;
       } else if (settings.SYNTHESIS_MODE === 'fm' && this.fmModulator) {
-        this.fmModulator.playbackRate.value = 1 / loopDuration;
+        this.fmModulator.playbackRate.value = playbackRate;
       }
 
       this.lastBPM = settings.BPM;
@@ -313,15 +316,33 @@ export class ShapeAudio {
   }
 
   /**
-   * Gets the current progress through the loop (0-1).
+   * Gets the current progress through the visual animation loop (0-1).
    * Uses the global Metronome for synchronized playback.
+   * Returns 0 if animation is disabled (multiplier = 0).
+   * Uses ping-pong/mirror effect so animation smoothly reverses at endpoints.
+   * Note: This only affects visual animation, not audio playback.
    */
   getProgress(currentTimeMs: number): number {
-    return Metronome.getProgress(currentTimeMs, this.loopBars);
+    if (settings.VISUAL_ANIMATION_MULTIPLIER === 0) {
+      return 0;
+    }
+    // Apply the multiplier to stretch the visual animation duration
+    const effectiveLoopBars =
+      this.loopBars * settings.VISUAL_ANIMATION_MULTIPLIER;
+    const rawProgress = Metronome.getProgress(currentTimeMs, effectiveLoopBars);
+    // Apply triangle wave for ping-pong effect: 0->1->0
+    // First half: 0 to 0.5 maps to 0 to 1
+    // Second half: 0.5 to 1 maps to 1 to 0
+    if (rawProgress < 0.5) {
+      return rawProgress * 2;
+    } else {
+      return (1 - rawProgress) * 2;
+    }
   }
 
   /**
-   * Gets the loop duration in seconds at current BPM.
+   * Gets the audio loop duration in seconds at current BPM.
+   * Note: This is the audio duration, not affected by visual animation multiplier.
    */
   getLoopDuration(): number {
     return this.loopBars * Metronome.getBarDuration();

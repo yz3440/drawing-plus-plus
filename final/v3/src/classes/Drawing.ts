@@ -8,6 +8,13 @@ import {
 import { ShapeAudio } from './ShapeAudio';
 import { WaveVisualizer, VisualizerTransform } from './WaveVisualizer';
 
+/** Recorded position with normalized time (0-1) */
+interface RecordedPosition {
+  x: number;
+  y: number;
+  t: number; // normalized time 0-1
+}
+
 // Static ID counter
 let nextDrawingId = 1;
 
@@ -43,6 +50,11 @@ export class Drawing {
   isDragging: boolean = false;
   private dragOffsetX: number = 0;
   private dragOffsetY: number = 0;
+
+  // Motion recording state
+  private recordedPath: RecordedPosition[] = [];
+  private isRecording: boolean = false;
+  private recordingStartTime: number = 0;
 
   // Transformation state
   shapeTranslationX: number = 0;
@@ -257,6 +269,9 @@ export class Drawing {
     // Update audio params every frame to react to GUI changes
     this.audio?.updateParams();
 
+    // Update position from recorded motion path (if any)
+    this.updateMotionPlayback();
+
     this.p.push();
 
     if (this.doneDrawing && this.isValidShape) {
@@ -377,6 +392,18 @@ export class Drawing {
     this.isDragging = true;
     this.dragOffsetX = x - this.shapeTranslationX;
     this.dragOffsetY = y - this.shapeTranslationY;
+
+    // Start recording motion
+    this.isRecording = true;
+    this.recordedPath = [];
+    this.recordingStartTime = this.p.millis();
+
+    // Record initial position
+    this.recordedPath.push({
+      x: this.shapeTranslationX,
+      y: this.shapeTranslationY,
+      t: 0,
+    });
   }
 
   /**
@@ -387,6 +414,16 @@ export class Drawing {
 
     this.shapeTranslationX = x - this.dragOffsetX;
     this.shapeTranslationY = y - this.dragOffsetY;
+
+    // Record position during drag
+    if (this.isRecording) {
+      const elapsed = this.p.millis() - this.recordingStartTime;
+      this.recordedPath.push({
+        x: this.shapeTranslationX,
+        y: this.shapeTranslationY,
+        t: elapsed, // Will be normalized when recording ends
+      });
+    }
 
     // Invalidate geometry cache
     this._lastTransformHash = '';
@@ -402,6 +439,104 @@ export class Drawing {
    */
   endDrag(): void {
     this.isDragging = false;
+
+    // Stop recording and normalize the path
+    if (this.isRecording && this.recordedPath.length > 1) {
+      this.isRecording = false;
+      const recordingDuration = this.p.millis() - this.recordingStartTime;
+
+      // Normalize time values to 0-1
+      const maxT = this.recordedPath[this.recordedPath.length - 1].t;
+      if (maxT > 0) {
+        for (const pos of this.recordedPath) {
+          pos.t = pos.t / maxT;
+        }
+      }
+
+      console.log(
+        `Recorded ${this.recordedPath.length} positions over ${recordingDuration}ms`
+      );
+    } else {
+      // Not enough data to make a meaningful animation
+      this.recordedPath = [];
+      this.isRecording = false;
+    }
+  }
+
+  /**
+   * Clears the recorded motion path.
+   */
+  clearRecordedPath(): void {
+    this.recordedPath = [];
+  }
+
+  /**
+   * Returns true if this drawing has a recorded motion path.
+   */
+  hasRecordedPath(): boolean {
+    return this.recordedPath.length > 1;
+  }
+
+  /**
+   * Updates position based on recorded path and current audio progress.
+   * Call this every frame when not dragging.
+   */
+  private updateMotionPlayback(): void {
+    if (this.isDragging || this.recordedPath.length < 2 || !this.audio) return;
+
+    // Get current progress through the loop (0-1)
+    const progress = this.audio.getProgress(this.p.millis());
+
+    // Find the two recorded positions to interpolate between
+    let p1 = this.recordedPath[0];
+    let p2 = this.recordedPath[1];
+
+    for (let i = 0; i < this.recordedPath.length - 1; i++) {
+      if (
+        this.recordedPath[i].t <= progress &&
+        this.recordedPath[i + 1].t > progress
+      ) {
+        p1 = this.recordedPath[i];
+        p2 = this.recordedPath[i + 1];
+        break;
+      }
+    }
+
+    // Handle wrap-around (when progress is past the last recorded point)
+    if (progress >= this.recordedPath[this.recordedPath.length - 1].t) {
+      p1 = this.recordedPath[this.recordedPath.length - 1];
+      p2 = this.recordedPath[0];
+    }
+
+    // Interpolate position
+    const segmentDuration = p2.t - p1.t;
+    let localProgress = 0;
+    if (segmentDuration > 0) {
+      localProgress = (progress - p1.t) / segmentDuration;
+    } else if (p2.t < p1.t) {
+      // Wrapping from end to start
+      const wrapDuration = 1 - p1.t + p2.t;
+      if (progress >= p1.t) {
+        localProgress = (progress - p1.t) / wrapDuration;
+      } else {
+        localProgress = (1 - p1.t + progress) / wrapDuration;
+      }
+    }
+
+    // Clamp and apply easing for smoother motion
+    localProgress = Math.max(0, Math.min(1, localProgress));
+
+    // Linear interpolation
+    this.shapeTranslationX = p1.x + (p2.x - p1.x) * localProgress;
+    this.shapeTranslationY = p1.y + (p2.y - p1.y) * localProgress;
+
+    // Invalidate geometry cache
+    this._lastTransformHash = '';
+
+    // Update FM frequency based on interpolated position
+    if (settings.SYNTHESIS_MODE === 'fm') {
+      this.audio?.updateFMFrequency(this.getCentroid());
+    }
   }
 
   /**
@@ -411,6 +546,13 @@ export class Drawing {
     if (settings.SYNTHESIS_MODE === 'fm' && this.audio) {
       this.audio.updateFMFrequency(this.getCentroid());
     }
+  }
+
+  /**
+   * Force update audio parameters (call when settings change).
+   */
+  updateAudioParams(): void {
+    this.audio?.updateParams();
   }
 
   /**
