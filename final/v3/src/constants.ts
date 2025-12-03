@@ -43,7 +43,7 @@ export const settings = {
   AUTO_CLOSE_PATH: true,
   AREA_CALCULATION_METHOD: 'original_polygon' as AreaCalculationMethod,
   // Synthesis mode settings
-  SYNTHESIS_MODE: 'waveform' as SynthesisMode,
+  SYNTHESIS_MODE: 'fm' as SynthesisMode,
   FM_NUM_LINES: 8, // Number of frequency lines in FM mode
 };
 
