@@ -1,7 +1,6 @@
 import p5 from 'p5';
 import './style.css';
 import { Drawing } from './classes/Drawing';
-import { Pie } from './classes/Pie';
 import { Metronome } from './classes/Metronome';
 import {
   settings,
@@ -15,6 +14,7 @@ window.p5 = p5;
 
 const sketch = (p: p5) => {
   let currentDrawing: Drawing | null = null;
+  let triangleDrawings: Drawing[] = []; // Completed triangle drawings
   let drawings: Drawing[] = []; // Non-triangle drawings (falling)
   let hoveredDrawing: Drawing | null = null;
 
@@ -28,9 +28,6 @@ const sketch = (p: p5) => {
     canvas.parent('canvas-container');
 
     p.background(0);
-
-    // Initialize Pie singleton at center of screen
-    Pie.init(p, p.windowWidth / 2, p.windowHeight / 2);
 
     // Initialize dat.gui
     const gui = new dat.GUI();
@@ -47,9 +44,6 @@ const sketch = (p: p5) => {
   p.windowResized = () => {
     p.resizeCanvas(p.windowWidth, p.windowHeight);
     updateCanvasDimensions(p.windowWidth, p.windowHeight);
-
-    // Update Pie position to new center
-    Pie.setPosition(p.windowWidth / 2, p.windowHeight / 2);
   };
 
   p.draw = () => {
@@ -58,23 +52,25 @@ const sketch = (p: p5) => {
 
     p.background(0);
 
-    // Draw the Pie (all triangle drawings)
-    Pie.draw();
+    // Draw active triangle drawings
+    for (const drawing of triangleDrawings) {
+      drawing.draw();
+    }
 
     p.background(0, 0, 0, 100);
 
     // Draw non-triangle drawings
-    const allDrawings: Drawing[] = [...drawings];
+    const allFallingDrawings: Drawing[] = [...drawings];
     if (currentDrawing) {
-      allDrawings.push(currentDrawing);
+      allFallingDrawings.push(currentDrawing);
     }
 
-    for (const drawing of allDrawings) {
+    for (const drawing of allFallingDrawings) {
       drawing.draw();
     }
 
     // Remove drawings that are off screen
-    allDrawings
+    allFallingDrawings
       .filter((drawing) => drawing.isOffScreen())
       .forEach((drawing) => {
         const idx = drawings.indexOf(drawing);
@@ -103,7 +99,7 @@ const sketch = (p: p5) => {
       return;
     }
 
-    // Check if mouse is over any drawing in the Pie
+    // Check if mouse is over any drawing
     hoveredDrawing = findDrawingUnderMouse(p.mouseX, p.mouseY);
 
     if (hoveredDrawing) {
@@ -127,8 +123,8 @@ const sketch = (p: p5) => {
   function findDrawingUnderMouse(x: number, y: number): Drawing | null {
     const candidates: Drawing[] = [];
 
-    // Check all drawings in the Pie
-    for (const drawing of Pie.drawings) {
+    // Check all triangle drawings
+    for (const drawing of triangleDrawings) {
       if (drawing.containsPoint(x, y)) {
         candidates.push(drawing);
       }
@@ -161,7 +157,7 @@ const sketch = (p: p5) => {
     if (!currentDrawing) {
       const drawingToDelete = findDrawingUnderMouse(p.mouseX, p.mouseY);
       if (drawingToDelete) {
-        Pie.removeDrawing(drawingToDelete);
+        removeDrawing(drawingToDelete);
         return; // Don't start a new drawing
       }
     }
@@ -183,6 +179,14 @@ const sketch = (p: p5) => {
     stopDrawing();
   };
 
+  function removeDrawing(drawing: Drawing): void {
+    const idx = triangleDrawings.indexOf(drawing);
+    if (idx !== -1) {
+      drawing.dispose();
+      triangleDrawings.splice(idx, 1);
+    }
+  }
+
   function startDrawing(x: number, y: number): void {
     currentDrawing = new Drawing(p);
     currentDrawing.addPoint(x, y);
@@ -199,7 +203,7 @@ const sketch = (p: p5) => {
 
     currentDrawing.finishDrawing();
     if (currentDrawing.isTriangle) {
-      Pie.addDrawing(currentDrawing);
+      triangleDrawings.push(currentDrawing);
     } else {
       drawings.push(currentDrawing);
     }

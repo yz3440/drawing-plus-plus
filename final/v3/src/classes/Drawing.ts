@@ -36,12 +36,11 @@ export class Drawing {
   doneDrawing: boolean = false;
   highlighted: boolean = false;
 
-  // Transformation state (used by Pie for positioning)
+  // Transformation state
   shapeTranslationX: number = 0;
   shapeTranslationY: number = 0;
   rotation: number = 0;
   scale: number = 1;
-  startAngle: number = 0;
 
   // Memoization cache for transformed geometry
   private _cachedTransformedPolygon: Point[] | null = null;
@@ -54,7 +53,7 @@ export class Drawing {
     this.points = [];
   }
 
-  // Expose analysis properties for external access (e.g., Pie)
+  // Expose analysis properties for external access
   get isTriangle(): boolean {
     return this.analysis?.isTriangle ?? false;
   }
