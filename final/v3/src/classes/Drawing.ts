@@ -1,7 +1,10 @@
 import p5 from 'p5';
 import { canvasHeight, GRAVITY, settings } from '../constants';
 import { Point, getWave } from '../util';
-import { TriangleAnalyzer, TriangleAnalysisResult } from './TriangleAnalyzer';
+import {
+  SubPolygonAnalyzer,
+  SubPolygonAnalysisResult,
+} from './SubPolygonAnalyzer';
 import { ShapeAudio } from './ShapeAudio';
 import { WaveVisualizer, VisualizerTransform } from './WaveVisualizer';
 
@@ -18,13 +21,13 @@ export class Drawing {
   points: Point[];
 
   // Analysis results (populated after finishDrawing)
-  private analysis: TriangleAnalysisResult | null = null;
+  private analysis: SubPolygonAnalysisResult | null = null;
 
   // Audio & visualization components
   private audio: ShapeAudio | null = null;
   private visualizer: WaveVisualizer | null = null;
 
-  // Physics for non-triangle shapes (falling animation)
+  // Physics for non-valid shapes (falling animation)
   private fallingTranslationY: number = 0;
   private fallingVelocityY: number = 0;
   private fallingAccelerationY: number = GRAVITY;
@@ -54,8 +57,8 @@ export class Drawing {
   }
 
   // Expose analysis properties for external access
-  get isTriangle(): boolean {
-    return this.analysis?.isTriangle ?? false;
+  get isValidShape(): boolean {
+    return this.analysis?.isValidShape ?? false;
   }
 
   get tipAngle(): number {
@@ -70,12 +73,8 @@ export class Drawing {
     return this.analysis?.firstPolygonPoints ?? null;
   }
 
-  get simplifiedTrianglePoints(): Point[] | null {
-    return this.analysis?.simplifiedTrianglePoints ?? null;
-  }
-
-  get triangularity(): number {
-    return this.analysis?.triangularity ?? 0;
+  get finalSimplifiedPoints(): Point[] | null {
+    return this.analysis?.finalSimplifiedPoints ?? null;
   }
 
   /**
@@ -98,9 +97,8 @@ export class Drawing {
 
     this._lastTransformHash = hash;
 
-    // Get the polygon to transform (prefer firstPolygonPoints, fallback to simplifiedTrianglePoints)
-    const sourcePolygon =
-      this.firstPolygonPoints ?? this.simplifiedTrianglePoints;
+    // Get the polygon to transform (prefer firstPolygonPoints, fallback to finalSimplifiedPoints)
+    const sourcePolygon = this.firstPolygonPoints ?? this.finalSimplifiedPoints;
     if (!sourcePolygon || sourcePolygon.length === 0) {
       this._cachedTransformedPolygon = null;
       this._cachedCentroid = null;
@@ -203,10 +201,9 @@ export class Drawing {
     this.doneDrawing = true;
 
     // Analyze the drawn shape
-    this.analysis = TriangleAnalyzer.analyze(this.points);
+    this.analysis = SubPolygonAnalyzer.analyze(this.points);
 
-    if (!this.analysis.isTriangle || !this.analysis.tipPoint) {
-      console.log('triangularity', this.analysis.triangularity);
+    if (!this.analysis.isValidShape || !this.analysis.tipPoint) {
       return;
     }
 
@@ -215,29 +212,27 @@ export class Drawing {
       settings.TIP_SELECTION_METHOD === 'closest_edge' &&
       this.points.length > 0
     ) {
-      TriangleAnalyzer.findTipByClosestEdge(this.analysis, this.points[0]);
+      SubPolygonAnalyzer.findTipByClosestEdge(this.analysis, this.points[0]);
     }
-
-    console.log('triangularity', this.analysis.triangularity);
 
     // Translate everything to center on the tip point
     this.shapeTranslationX = this.analysis.tipPoint.x;
     this.shapeTranslationY = this.analysis.tipPoint.y;
 
-    const { translatedPoints } = TriangleAnalyzer.translateToTip(
+    const { translatedPoints } = SubPolygonAnalyzer.translateToTip(
       this.analysis,
       this.points
     );
     this.points = translatedPoints;
 
-    // Initialize audio and visualizer if we have valid triangle points
+    // Initialize audio and visualizer if we have valid polygon points
     if (
       this.analysis.firstPolygonPoints &&
-      this.analysis.simplifiedTrianglePoints
+      this.analysis.finalSimplifiedPoints
     ) {
       const wave = getWave(
         this.analysis.firstPolygonPoints,
-        this.analysis.simplifiedTrianglePoints as [Point, Point, Point]
+        this.analysis.finalSimplifiedPoints
       );
 
       if (wave) {
@@ -245,7 +240,7 @@ export class Drawing {
 
         this.audio = new ShapeAudio(this.p, {
           wave,
-          perimeter: this.analysis.lengthOfSimplifiedTriangle,
+          perimeter: this.analysis.lengthOfFinalSimplified,
         });
 
         this.visualizer = new WaveVisualizer(this.p, wave);
@@ -259,13 +254,13 @@ export class Drawing {
 
     this.p.push();
 
-    if (this.doneDrawing && this.isTriangle) {
+    if (this.doneDrawing && this.isValidShape) {
       this.p.push();
       this.p.translate(this.shapeTranslationX, this.shapeTranslationY);
       this.p.scale(this.scale);
       this.p.rotate(this.rotation);
-    } else if (this.doneDrawing && !this.isTriangle) {
-      // Non-triangle shapes fall off screen
+    } else if (this.doneDrawing && !this.isValidShape) {
+      // Non-valid shapes fall off screen
       this.fallingVelocityY += this.fallingAccelerationY;
       this.fallingTranslationY += this.fallingVelocityY;
       this.p.translate(0, this.fallingTranslationY);
@@ -282,10 +277,10 @@ export class Drawing {
     // Draw the first polygon (closed shape)
     this.drawFirstPolygon();
 
-    // Draw the simplified triangle
-    this.drawSimplifiedTriangle();
+    // Draw the simplified polygon (the "shape")
+    this.drawSimplifiedPolygon();
 
-    if (this.doneDrawing && this.isTriangle) {
+    if (this.doneDrawing && this.isValidShape) {
       this.p.pop();
     }
 
@@ -331,14 +326,14 @@ export class Drawing {
     this.p.pop();
   }
 
-  private drawSimplifiedTriangle(): void {
-    if (!this.simplifiedTrianglePoints) return;
+  private drawSimplifiedPolygon(): void {
+    if (!this.finalSimplifiedPoints) return;
 
     this.p.push();
     this.p.noFill();
     this.p.stroke(0, 255, 0, 200);
     this.p.beginShape();
-    for (const pt of this.simplifiedTrianglePoints) {
+    for (const pt of this.finalSimplifiedPoints) {
       this.p.vertex(pt.x, pt.y);
     }
     this.p.endShape(this.p.CLOSE);
@@ -350,7 +345,7 @@ export class Drawing {
       !this.visualizer ||
       !this.audio ||
       !this.doneDrawing ||
-      !this.isTriangle
+      !this.isValidShape
     ) {
       return;
     }

@@ -83,7 +83,6 @@ export function extractFirstPolygon(points: Point[]) {
 }
 
 export function makeSureCounterClockwise(vertices: Point[]): Point[] {
-  const polygon = new Polygon(vertices);
   // Polygon in 2d-geometry handles orientation?
   // Actually `new Polygon(vertices)` creates faces.
   // Assuming single face.
@@ -242,10 +241,50 @@ export function simplifyPolygonUntilNumberOfPoints(
     }
     iterations++;
   }
-  // console.log('points.length', currentPoints.length);
-  // console.log('n', n);
-  // console.log('iterations', iterations);
   return currentPoints;
+}
+
+/**
+ * Simplifies a polygon until the ratio of its area to the original maxArea
+ * is at least the given threshold. Attempts to find the minimum number of points (starting from 3).
+ *
+ * @param points The points to simplify (should be the convex hull or dense polygon)
+ * @param maxArea The reference area (original polygon area)
+ * @param threshold The area ratio threshold (0 to 1)
+ */
+export function simplifyPolygonUntilAreaRatio(
+  points: Point[],
+  maxArea: number,
+  threshold: number
+): Point[] {
+  if (points.length <= 3) return points;
+
+  // We assume fewer points = simplified more.
+  // We want to find the smallest K such that Area(simplify(K)) / maxArea >= threshold.
+  // We iterate K from 3 upwards.
+
+  // Optimization: Use binary search or just linear search if N is small?
+  // Points length is usually small for convex hulls (e.g. < 100). Linear search 3..N is fine.
+
+  for (let k = 3; k <= points.length; k++) {
+    // simplifyPolygonUntilNumberOfPoints tries to get <= k points (or close to k).
+    // Actually, based on implementation, it tries to reduce UNTIL length <= k is not guaranteed if epsilon jumps?
+    // Wait, the implementation of simplifyPolygonUntilNumberOfPoints iterates while length > n.
+    // So it returns something with <= n points?
+    // No, `while (currentPoints.length > n)`... updates currentPoints.
+    // So when it exits, `currentPoints.length <= n`.
+    // So calling with k will return polygon with <= k points.
+
+    const simplified = simplifyPolygonUntilNumberOfPoints(points, k);
+    const area = positivePolygonArea(simplified);
+
+    // If area ratio satisfies threshold, and we have at least 3 points
+    if (area / maxArea >= threshold && simplified.length >= 3) {
+      return simplified;
+    }
+  }
+
+  return points;
 }
 
 export function boundingBoxAndCenterOfPolygon(vertices: Point[]): Box {
@@ -429,77 +468,72 @@ export interface WaveSamplePoint {
   ptProjectedOnSegment: Point;
 }
 
+/**
+ * Generalized getWave for any N-sided polygon.
+ * @param polygonPoints The detailed points of the original polygon
+ * @param simplifiedPoints The vertices of the simplified polygon (the "shape")
+ */
 export function getWave(
   polygonPoints: Point[],
-  trianglePoints: [Point, Point, Point]
+  simplifiedPoints: Point[]
 ): WaveSamplePoint[] {
-  const [tp1, tp2, tp3] = trianglePoints;
+  if (!simplifiedPoints || simplifiedPoints.length < 3) return [];
 
-  console.log('polygonPoints', polygonPoints);
+  const allSamples: WaveSamplePoint[] = [];
+  let currentLength = 0;
 
-  const secondTrianglePtPolygonIndex = polygonPoints.findIndex((p) =>
-    p.equalTo(tp2)
-  );
+  const n = simplifiedPoints.length;
 
-  const thirdTrianglePtPolygonIndex = polygonPoints.findIndex((p) =>
-    p.equalTo(tp3)
-  );
+  for (let i = 0; i < n; i++) {
+    const pStart = simplifiedPoints[i];
+    const pEnd = simplifiedPoints[(i + 1) % n];
 
-  console.log('trianglePoints', trianglePoints);
+    // Find indices in the original polygon
+    // Note: polygonPoints must contain points corresponding to simplifiedPoints
+    // But simplifiedPoints might have moved slightly or be new instances.
+    // We assume they are from the same set or we match by proximity.
+    // The simplified points usually come from `convexHull` of `polygonPoints`.
+    // The `polygonPoints` passed here should be the *full* contour (firstPolygonPoints).
+    // Wait, `simplifiedPoints` are derived from `convexHull`, which is a subset of `firstPolygonPoints`.
+    // So we can find exact matches.
 
-  const firstEdgePts = polygonPoints.slice(0, secondTrianglePtPolygonIndex + 1);
-  const firstEdgeLineSegment: [Point, Point] = [tp1, tp2];
-  const firstEdgeLength = dist(tp1, tp2);
-  const firstEdgeWaveSamples = firstEdgePts
-    .map((p) => projectPointOntoLineSegment(p, firstEdgeLineSegment))
-    .map((sample) => ({
-      ...sample,
-      t: sample.t * firstEdgeLength,
-      pt: sample.pt,
-      ptProjectedOnSegment: sample.ptProjectedOnSegment,
-    }));
-  console.log('firstEdgePts', firstEdgePts);
-  console.log('firstEdgeWaveSamples', firstEdgeWaveSamples);
+    const startIndex = polygonPoints.findIndex((p) => p.equalTo(pStart));
+    const endIndex = polygonPoints.findIndex((p) => p.equalTo(pEnd));
 
-  const secondEdgePts = polygonPoints.slice(
-    secondTrianglePtPolygonIndex,
-    thirdTrianglePtPolygonIndex + 1
-  );
-  const secondEdgeLineSegment: [Point, Point] = [tp2, tp3];
-  const secondEdgeLength = dist(tp2, tp3);
-  const secondEdgeWaveSamples = secondEdgePts
-    .map((p) => projectPointOntoLineSegment(p, secondEdgeLineSegment))
-    .map((sample) => ({
-      ...sample,
-      t: sample.t * secondEdgeLength + firstEdgeLength,
-      pt: sample.pt,
-      ptProjectedOnSegment: sample.ptProjectedOnSegment,
-    }));
-  console.log('secondEdgePts', secondEdgePts);
-  console.log('secondEdgeWaveSamples', secondEdgeWaveSamples);
+    if (startIndex === -1 || endIndex === -1) {
+      console.warn('Could not find simplified vertices in original polygon');
+      continue;
+    }
 
-  const thirdEdgePts = polygonPoints
-    .slice(thirdTrianglePtPolygonIndex, polygonPoints.length)
-    .concat([polygonPoints[0]]);
+    // Get the segment of points from the original polygon
+    // Handles wrap-around
+    let edgePts: Point[] = [];
+    if (endIndex > startIndex) {
+      edgePts = polygonPoints.slice(startIndex, endIndex + 1);
+    } else {
+      edgePts = [
+        ...polygonPoints.slice(startIndex),
+        ...polygonPoints.slice(0, endIndex + 1),
+      ];
+    }
 
-  const thirdEdgeLineSegment: [Point, Point] = [tp3, tp1];
-  const thirdEdgeLength = dist(tp3, tp1);
-  const thirdEdgeWaveSamples = thirdEdgePts
-    .map((p) => projectPointOntoLineSegment(p, thirdEdgeLineSegment))
-    .map((sample) => ({
-      ...sample,
-      t: sample.t * thirdEdgeLength + firstEdgeLength + secondEdgeLength,
-      pt: sample.pt,
-      ptProjectedOnSegment: sample.ptProjectedOnSegment,
-    }));
-  console.log('thirdEdgePts', thirdEdgePts);
-  console.log('thirdEdgeWaveSamples', thirdEdgeWaveSamples);
+    const edgeLineSegment: [Point, Point] = [pStart, pEnd];
+    const edgeLength = dist(pStart, pEnd);
 
-  return [
-    ...firstEdgeWaveSamples,
-    ...secondEdgeWaveSamples,
-    ...thirdEdgeWaveSamples,
-  ].map((sample) => ({
+    const edgeSamples = edgePts
+      .map((p) => projectPointOntoLineSegment(p, edgeLineSegment))
+      .map((sample) => ({
+        ...sample,
+        t: sample.t * edgeLength + currentLength,
+        pt: sample.pt,
+        ptProjectedOnSegment: sample.ptProjectedOnSegment,
+      }));
+
+    allSamples.push(...edgeSamples);
+    currentLength += edgeLength;
+  }
+
+  return allSamples.map((sample) => ({
     ...sample,
     amplitude: Math.pow(sample.amplitude, 3),
   }));

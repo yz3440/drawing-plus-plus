@@ -14,8 +14,8 @@ window.p5 = p5;
 
 const sketch = (p: p5) => {
   let currentDrawing: Drawing | null = null;
-  let triangleDrawings: Drawing[] = []; // Completed triangle drawings
-  let drawings: Drawing[] = []; // Non-triangle drawings (falling)
+  let polygonDrawings: Drawing[] = []; // Completed valid polygon drawings
+  let drawings: Drawing[] = []; // Non-valid drawings (falling)
   let hoveredDrawing: Drawing | null = null;
 
   /*
@@ -32,10 +32,13 @@ const sketch = (p: p5) => {
     // Initialize dat.gui
     const gui = new dat.GUI();
     gui.add(settings, 'BPM', 60, 240).step(1).name('BPM');
+    
+    // Replaced TRIANGULARITY_THRESHOLD with AREA_RATIO_THRESHOLD
     gui
-      .add(settings, 'TRIANGULARITY_THRESHOLD', 0, 0.8)
+      .add(settings, 'AREA_RATIO_THRESHOLD', 0, 1.0)
       .step(0.01)
-      .name('Tri. Threshold');
+      .name('Area Ratio');
+      
     gui
       .add(settings, 'TIP_SELECTION_METHOD', TIP_SELECTION_METHODS)
       .name('Tip Selection');
@@ -53,14 +56,14 @@ const sketch = (p: p5) => {
 
     p.background(0);
 
-    // Draw active triangle drawings
-    for (const drawing of triangleDrawings) {
+    // Draw active polygon drawings
+    for (const drawing of polygonDrawings) {
       drawing.draw();
     }
 
     p.background(0, 0, 0, 100);
 
-    // Draw non-triangle drawings
+    // Draw non-valid drawings
     const allFallingDrawings: Drawing[] = [...drawings];
     if (currentDrawing) {
       allFallingDrawings.push(currentDrawing);
@@ -124,8 +127,8 @@ const sketch = (p: p5) => {
   function findDrawingUnderMouse(x: number, y: number): Drawing | null {
     const candidates: Drawing[] = [];
 
-    // Check all triangle drawings
-    for (const drawing of triangleDrawings) {
+    // Check all polygon drawings
+    for (const drawing of polygonDrawings) {
       if (drawing.containsPoint(x, y)) {
         candidates.push(drawing);
       }
@@ -181,10 +184,10 @@ const sketch = (p: p5) => {
   };
 
   function removeDrawing(drawing: Drawing): void {
-    const idx = triangleDrawings.indexOf(drawing);
+    const idx = polygonDrawings.indexOf(drawing);
     if (idx !== -1) {
       drawing.dispose();
-      triangleDrawings.splice(idx, 1);
+      polygonDrawings.splice(idx, 1);
     }
   }
 
@@ -203,8 +206,8 @@ const sketch = (p: p5) => {
     if (!currentDrawing) return;
 
     currentDrawing.finishDrawing();
-    if (currentDrawing.isTriangle) {
-      triangleDrawings.push(currentDrawing);
+    if (currentDrawing.isValidShape) {
+      polygonDrawings.push(currentDrawing);
     } else {
       drawings.push(currentDrawing);
     }
