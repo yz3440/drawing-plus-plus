@@ -59,7 +59,13 @@ export class TriangleAnalyzer {
     let firstPolygonPoints = firstPolygon?.vertices ?? null;
 
     if (!firstPolygonPoints) {
-      return result;
+      // If no closed polygon is found (no self-intersections),
+      // try to close the start and end points to form a loop automatically.
+      if (settings.AUTO_CLOSE_PATH && points.length >= 3) {
+        firstPolygonPoints = [...points];
+      } else {
+        return result;
+      }
     }
 
     firstPolygonPoints = ensureCyclic(

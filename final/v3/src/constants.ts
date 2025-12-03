@@ -13,6 +13,7 @@ export const settings = {
   BPM: 120,
   TRIANGULARITY_THRESHOLD: TRIANGULARITY_THRESHOLD,
   TIP_SELECTION_METHOD: 'closest_edge' as TipSelectionMethod,
+  AUTO_CLOSE_PATH: true,
 };
 
 // Dynamic canvas dimensions (will be set by main.ts)

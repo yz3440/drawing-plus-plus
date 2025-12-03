@@ -39,6 +39,7 @@ const sketch = (p: p5) => {
     gui
       .add(settings, 'TIP_SELECTION_METHOD', TIP_SELECTION_METHODS)
       .name('Tip Selection');
+    gui.add(settings, 'AUTO_CLOSE_PATH').name('Auto Close Path');
   };
 
   p.windowResized = () => {
