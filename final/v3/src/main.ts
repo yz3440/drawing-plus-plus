@@ -58,7 +58,16 @@ const sketch = (p: p5) => {
     // Synthesis mode folder
     const synthFolder = gui.addFolder('Synthesis');
     synthFolder.add(settings, 'SYNTHESIS_MODE', SYNTHESIS_MODES).name('Mode');
-    synthFolder.add(settings, 'FM_NUM_LINES', 3, 12).step(1).name('FM Lines');
+    synthFolder
+      .add(settings, 'FM_NUM_LINES', 3, 12)
+      .step(1)
+      .name('FM Lines')
+      .onChange(() => {
+        // Update all shapes' FM frequencies when line count changes
+        for (const drawing of polygonDrawings) {
+          drawing.updateFMAudio();
+        }
+      });
     synthFolder.add(settings, 'BPM', 60, 240).step(1).name('BPM');
     synthFolder.open();
 
@@ -146,10 +155,10 @@ const sketch = (p: p5) => {
       p.stroke(60, 60, 80);
       p.line(0, line.y, p.width, line.y);
 
-      // Draw the note label
+      // Draw the frequency label (note name and frequency)
       p.noStroke();
       p.fill(100, 100, 140);
-      p.text(line.name, 10, line.y);
+      p.text(`${line.name} (${Math.round(line.freq)} Hz)`, 10, line.y);
     }
 
     p.pop();

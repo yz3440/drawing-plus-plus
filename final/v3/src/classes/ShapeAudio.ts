@@ -2,6 +2,7 @@ import p5 from 'p5';
 import { WaveSamplePoint, generateWaveBuffer, Point } from '../util';
 import { settings, FM_NOTES, canvasHeight } from '../constants';
 import { Metronome } from './Metronome';
+import { AudioMixer } from './AudioMixer';
 
 /**
  * Snaps a ratio to the nearest integer ratio.
@@ -117,6 +118,9 @@ export class ShapeAudio {
   }
 
   private initAudio(): void {
+    // Initialize the global audio mixer
+    AudioMixer.init(this.p);
+
     if (settings.SYNTHESIS_MODE === 'fm') {
       this.initFMAudio();
     } else {
@@ -132,10 +136,18 @@ export class ShapeAudio {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     audioBuffer.copyToChannel(bufferData as any, 0);
 
-    // Master gain node
+    // Register with mixer and get recommended gain
+    const sourceGain = AudioMixer.registerSource();
+    const mixerOutput = AudioMixer.getOutput();
+
+    // Master gain node - connects to mixer instead of destination
     this.gainNode = ctx.createGain();
-    this.gainNode.gain.value = 1.0;
-    this.gainNode.connect(ctx.destination);
+    this.gainNode.gain.value = sourceGain;
+    if (mixerOutput) {
+      this.gainNode.connect(mixerOutput);
+    } else {
+      this.gainNode.connect(ctx.destination);
+    }
 
     // AM Synthesis: Shape modulates the volume of an audible tone
 
@@ -187,10 +199,18 @@ export class ShapeAudio {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     audioBuffer.copyToChannel(bufferData as any, 0);
 
-    // Master gain node
+    // Register with mixer and get recommended gain
+    const sourceGain = AudioMixer.registerSource();
+    const mixerOutput = AudioMixer.getOutput();
+
+    // Master gain node - connects to mixer instead of destination
     this.gainNode = ctx.createGain();
-    this.gainNode.gain.value = 0.4;
-    this.gainNode.connect(ctx.destination);
+    this.gainNode.gain.value = sourceGain;
+    if (mixerOutput) {
+      this.gainNode.connect(mixerOutput);
+    } else {
+      this.gainNode.connect(ctx.destination);
+    }
 
     // FM Synthesis: Shape wave modulates the carrier frequency
     // The base frequency is controlled by centroid Y position
@@ -318,6 +338,9 @@ export class ShapeAudio {
    * Stops all audio sources and cleans up.
    */
   dispose(): void {
+    // Unregister from mixer
+    AudioMixer.unregisterSource();
+
     for (const source of this.audioSources) {
       try {
         source.stop();
