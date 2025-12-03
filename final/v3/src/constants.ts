@@ -15,6 +15,26 @@ export const AREA_CALCULATION_METHODS: AreaCalculationMethod[] = [
   'original_polygon',
 ];
 
+// Synthesis modes
+export type SynthesisMode = 'waveform' | 'fm';
+export const SYNTHESIS_MODES: SynthesisMode[] = ['waveform', 'fm'];
+
+// Musical notes for FM mode (pentatonic scale for pleasant sounds)
+export const FM_NOTES = [
+  { name: 'C3', freq: 130.81 },
+  { name: 'D3', freq: 146.83 },
+  { name: 'E3', freq: 164.81 },
+  { name: 'G3', freq: 196.0 },
+  { name: 'A3', freq: 220.0 },
+  { name: 'C4', freq: 261.63 },
+  { name: 'D4', freq: 293.66 },
+  { name: 'E4', freq: 329.63 },
+  { name: 'G4', freq: 392.0 },
+  { name: 'A4', freq: 440.0 },
+  { name: 'C5', freq: 523.25 },
+  { name: 'D5', freq: 587.33 },
+];
+
 // Create a settings object for dat.gui to bind to
 export const settings = {
   BPM: 120,
@@ -22,6 +42,9 @@ export const settings = {
   TIP_SELECTION_METHOD: 'closest_edge' as TipSelectionMethod,
   AUTO_CLOSE_PATH: true,
   AREA_CALCULATION_METHOD: 'original_polygon' as AreaCalculationMethod,
+  // Synthesis mode settings
+  SYNTHESIS_MODE: 'waveform' as SynthesisMode,
+  FM_NUM_LINES: 8, // Number of frequency lines in FM mode
 };
 
 // Dynamic canvas dimensions (will be set by main.ts)

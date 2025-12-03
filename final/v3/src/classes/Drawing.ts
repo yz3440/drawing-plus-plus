@@ -39,6 +39,11 @@ export class Drawing {
   doneDrawing: boolean = false;
   highlighted: boolean = false;
 
+  // Dragging state
+  isDragging: boolean = false;
+  private dragOffsetX: number = 0;
+  private dragOffsetY: number = 0;
+
   // Transformation state
   shapeTranslationX: number = 0;
   shapeTranslationY: number = 0;
@@ -363,6 +368,49 @@ export class Drawing {
 
   isOffScreen(): boolean {
     return this.fallingTranslationY > canvasHeight;
+  }
+
+  /**
+   * Starts dragging the shape from the given position.
+   */
+  startDrag(x: number, y: number): void {
+    this.isDragging = true;
+    this.dragOffsetX = x - this.shapeTranslationX;
+    this.dragOffsetY = y - this.shapeTranslationY;
+  }
+
+  /**
+   * Updates the shape position during dragging.
+   */
+  updateDrag(x: number, y: number): void {
+    if (!this.isDragging) return;
+
+    this.shapeTranslationX = x - this.dragOffsetX;
+    this.shapeTranslationY = y - this.dragOffsetY;
+
+    // Invalidate geometry cache
+    this._lastTransformHash = '';
+
+    // Update FM frequency based on new centroid position
+    if (settings.SYNTHESIS_MODE === 'fm') {
+      this.audio?.updateFMFrequency(this.getCentroid());
+    }
+  }
+
+  /**
+   * Ends dragging the shape.
+   */
+  endDrag(): void {
+    this.isDragging = false;
+  }
+
+  /**
+   * Updates FM audio based on current centroid (call when mode changes).
+   */
+  updateFMAudio(): void {
+    if (settings.SYNTHESIS_MODE === 'fm' && this.audio) {
+      this.audio.updateFMFrequency(this.getCentroid());
+    }
   }
 
   /**
