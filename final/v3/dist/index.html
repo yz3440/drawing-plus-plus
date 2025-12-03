@@ -4,34 +4,48 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pizza Maker</title>
-    <script type="module" crossorigin src="./assets/index-BX0Su_B4.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DNxt7JSy.css">
+    <script type="module" crossorigin src="./assets/index-eg5klq53.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DMqTNus8.css">
   </head>
   <body
-    class="bg-black text-white min-h-screen flex flex-col items-center justify-center"
+    class="bg-black text-white m-0 p-0 overflow-hidden w-screen h-screen"
     oncontextmenu="return false;"
   >
-    <div class="text-center">
-      <div class="p-2 border-2 border-white/20 bg-neutral-900/20">
-        <div class="p-2 border-2 border-white/40 bg-neutral-900/20">
-          <div class="p-2 border-2 border-white/60 bg-neutral-800/20">
-            <div class="p-2 border-2 border-white/80 bg-neutral-800/20">
-              <div class="overflow-hidden border-2 border-white">
-                <!-- The p5.js canvas will be automatically inserted here -->
-                <div id="canvas-container"></div>
-              </div>
-            </div>
-          </div>
+    <div id="canvas-container" class="w-full h-full"></div>
+
+    <!-- Info button -->
+    <button
+      id="info-btn"
+      class="fixed bottom-4 left-4 w-8 h-8 bg-black text-white border border-white text-sm font-bold hover:bg-black hover:text-white transition-colors cursor-pointer"
+      onclick="document.getElementById('info-dialog').showModal()"
+    >
+      i
+    </button>
+
+    <!-- Info dialog -->
+    <dialog
+      id="info-dialog"
+      class="bg-black text-white border border-white/20 p-0 max-w-md backdrop:bg-black/80 m-0"
+      style="position: fixed; bottom: 4rem; left: 1rem; top: auto; right: auto"
+      onclick="if(event.target===this)this.close()"
+    >
+      <div class="p-6">
+        <div class="flex justify-between items-start mb-6">
+          <h2 class="text-xl font-bold m-0">HOW TO USE</h2>
+          <button
+            class="bg-black text-white border border-white w-8 h-8 text-lg font-bold cursor-pointer hover:bg-black hover:text-white"
+            onclick="document.getElementById('info-dialog').close()"
+          >
+            ×
+          </button>
+        </div>
+        <div class="space-y-4 text-sm">
+          <p class="m-0">Draw anything triangular.</p>
+          <p class="m-0">Can be a pizza slice, or a flower petal.</p>
+          <p class="m-0 text-white/50">Click on a shape to delete it.</p>
         </div>
       </div>
-      <div
-        class="text-center text-sm mt-4 text-white/50 flex flex-row justify-between"
-      >
-        <div class="w-48 text-left">draw anything triangular</div>
-        <div class="w-48 text-center">can be a pizza slice</div>
-        <div class="w-48 text-right">or a flower petal</div>
-      </div>
-    </div>
+    </dialog>
 
   </body>
 </html>
