@@ -1,5 +1,6 @@
 import p5 from 'p5';
 import { WaveSamplePoint, generateWaveBuffer, Point } from '../util';
+export { Point };
 import { settings, FM_NOTES, canvasHeight } from '../constants';
 import { Metronome } from './Metronome';
 import { AudioMixer } from './AudioMixer';
@@ -73,6 +74,63 @@ export interface ShapeAudioConfig {
   referencePerimeter?: number;
 }
 
+export interface CurrentWavePosition {
+  pt: Point;
+  ptProjected: Point;
+}
+
+/**
+ * Gets the current position on the wave for a given progress (0-1).
+ * Returns the interpolated point on the original polygon and the simplified shape.
+ */
+export function getWavePositionAtProgress(
+  wave: WaveSamplePoint[],
+  progress: number
+): CurrentWavePosition | null {
+  if (wave.length < 2) return null;
+
+  const totalLength = wave[wave.length - 1].t;
+  const currentT = progress * totalLength;
+
+  // Find the current sample index
+  let sampleIndex = 0;
+  for (let i = 0; i < wave.length - 1; i++) {
+    if (wave[i].t <= currentT && wave[i + 1].t > currentT) {
+      sampleIndex = i;
+      break;
+    }
+  }
+
+  const s1 = wave[sampleIndex];
+  const s2 = wave[sampleIndex + 1] || s1;
+
+  if (!s1.pt || !s2.pt || !s1.ptProjectedOnSegment || !s2.ptProjectedOnSegment) {
+    return null;
+  }
+
+  // Interpolate for smoother position
+  const segmentDuration = s2.t - s1.t;
+  const segmentProgress =
+    segmentDuration > 0 ? (currentT - s1.t) / segmentDuration : 0;
+
+  // Interpolate between points on the polygon
+  const polyX = s1.pt.x + (s2.pt.x - s1.pt.x) * segmentProgress;
+  const polyY = s1.pt.y + (s2.pt.y - s1.pt.y) * segmentProgress;
+
+  // Interpolate between points on the simplified shape
+  const projX =
+    s1.ptProjectedOnSegment.x +
+    (s2.ptProjectedOnSegment.x - s1.ptProjectedOnSegment.x) * segmentProgress;
+  const projY =
+    s1.ptProjectedOnSegment.y +
+    (s2.ptProjectedOnSegment.y - s1.ptProjectedOnSegment.y) * segmentProgress;
+
+  return {
+    pt: new Point(polyX, polyY),
+    ptProjected: new Point(projX, projY),
+  };
+}
+
 /**
  * Handles audio synthesis for a shape.
  * Supports two modes:
@@ -90,6 +148,7 @@ export class ShapeAudio {
   private perimeter: number;
   private lastBPM: number = 0;
   private lastSynthMode: string = '';
+  private lastVisualMultiplier: number = 1;
 
   // FM mode specific
   private fmCarrier: OscillatorNode | null = null;
@@ -114,6 +173,7 @@ export class ShapeAudio {
     console.log('loopBars:', this.loopBars);
 
     this.lastSynthMode = settings.SYNTHESIS_MODE;
+    this.lastVisualMultiplier = settings.VISUAL_ANIMATION_MULTIPLIER;
     this.initAudio();
   }
 
@@ -214,7 +274,7 @@ export class ShapeAudio {
     }
 
     // FM Synthesis: Shape wave modulates the carrier frequency
-    // The base frequency is controlled by centroid Y position
+    // The base frequency is controlled by the traveling point's Y position
 
     // 1. Carrier oscillator (the audible tone)
     this.fmCarrier = ctx.createOscillator();
@@ -226,17 +286,18 @@ export class ShapeAudio {
     this.fmModulator.buffer = audioBuffer;
     this.fmModulator.loop = true;
 
-    // Calculate loop duration in seconds based on bars and current BPM
-    // Audio is NOT affected by VISUAL_ANIMATION_MULTIPLIER
+    // Calculate loop duration - must match visual animation for sync
     const barDuration = Metronome.getBarDuration();
-    const loopDuration = this.loopBars * barDuration;
+    const effectiveLoopBars =
+      this.loopBars * settings.VISUAL_ANIMATION_MULTIPLIER;
+    const loopDuration = effectiveLoopBars * barDuration;
     this.lastBPM = settings.BPM;
     this.fmModulator.playbackRate.value = 1 / loopDuration;
 
-    // Start the buffer at the correct phase to sync with the global Metronome
+    // Start the buffer at the correct phase to sync with the visual animation
     const currentProgress = Metronome.getProgress(
       this.p.millis(),
-      this.loopBars
+      effectiveLoopBars
     );
     const bufferOffset = currentProgress * 1; // 1 second buffer
     this.fmModulator.start(0, bufferOffset);
@@ -267,27 +328,48 @@ export class ShapeAudio {
   /**
    * Updates the FM frequency based on centroid position.
    * Call this when the shape is dragged.
+   * @deprecated Use updateFMFrequencyFromY for dynamic pitch based on traveling point
    */
   updateFMFrequency(centroid: Point | null): void {
     if (!centroid || settings.SYNTHESIS_MODE !== 'fm' || !this.fmCarrier)
       return;
 
-    const { freq } = getFrequencyForY(centroid.y);
+    this.updateFMFrequencyFromY(centroid.y);
+  }
+
+  /**
+   * Updates the FM frequency based on a Y position in world coordinates.
+   * Call this each frame with the current traveling point's world Y.
+   */
+  updateFMFrequencyFromY(worldY: number): void {
+    if (settings.SYNTHESIS_MODE !== 'fm' || !this.fmCarrier) return;
+
+    const { freq } = getFrequencyForY(worldY);
 
     // Smooth frequency transition
     const ctx = this.p.getAudioContext() as unknown as AudioContext;
-    this.fmCarrier.frequency.setTargetAtTime(freq, ctx.currentTime, 0.05);
+    this.fmCarrier.frequency.setTargetAtTime(freq, ctx.currentTime, 0.02);
 
     // Also update modulation depth to maintain consistent modulation index
     if (this.fmModGain) {
-      this.fmModGain.gain.setTargetAtTime(freq * 0.5, ctx.currentTime, 0.05);
+      this.fmModGain.gain.setTargetAtTime(freq * 0.5, ctx.currentTime, 0.02);
     }
 
     this.currentFrequency = freq;
   }
 
   /**
-   * Updates audio parameters in response to settings changes (e.g., BPM, mode).
+   * Gets the current position on the wave for the given time.
+   * Returns local coordinates (before shape transformation).
+   * @param currentTimeMs - should be p.millis() for sync with visuals
+   */
+  getCurrentWavePosition(currentTimeMs: number): CurrentWavePosition | null {
+    const progress = this.getProgress(currentTimeMs);
+    return getWavePositionAtProgress(this.wave, progress);
+  }
+
+  /**
+   * Updates audio parameters in response to settings changes (e.g., BPM, mode, multiplier).
    * Call this every frame.
    */
   updateParams(): void {
@@ -295,20 +377,34 @@ export class ShapeAudio {
     if (settings.SYNTHESIS_MODE !== this.lastSynthMode) {
       this.dispose();
       this.lastSynthMode = settings.SYNTHESIS_MODE;
+      this.lastVisualMultiplier = settings.VISUAL_ANIMATION_MULTIPLIER;
       this.initAudio();
       return;
     }
 
-    // Update if BPM changed (audio is NOT affected by visual animation multiplier)
+    // Check if visual multiplier changed - need to reinitialize for FM mode
+    if (
+      settings.SYNTHESIS_MODE === 'fm' &&
+      settings.VISUAL_ANIMATION_MULTIPLIER !== this.lastVisualMultiplier
+    ) {
+      this.dispose();
+      this.lastVisualMultiplier = settings.VISUAL_ANIMATION_MULTIPLIER;
+      this.initAudio();
+      return;
+    }
+
+    // Update if BPM changed
     if (settings.BPM !== this.lastBPM) {
       const barDuration = Metronome.getBarDuration();
-      const loopDuration = this.loopBars * barDuration;
-      const playbackRate = 1 / loopDuration;
 
       if (settings.SYNTHESIS_MODE === 'waveform' && this.modulator) {
-        this.modulator.playbackRate.value = playbackRate;
+        const loopDuration = this.loopBars * barDuration;
+        this.modulator.playbackRate.value = 1 / loopDuration;
       } else if (settings.SYNTHESIS_MODE === 'fm' && this.fmModulator) {
-        this.fmModulator.playbackRate.value = playbackRate;
+        const effectiveLoopBars =
+          this.loopBars * settings.VISUAL_ANIMATION_MULTIPLIER;
+        const loopDuration = effectiveLoopBars * barDuration;
+        this.fmModulator.playbackRate.value = 1 / loopDuration;
       }
 
       this.lastBPM = settings.BPM;
@@ -316,11 +412,10 @@ export class ShapeAudio {
   }
 
   /**
-   * Gets the current progress through the visual animation loop (0-1).
+   * Gets the current progress through the animation loop (0-1).
    * Uses the global Metronome for synchronized playback.
    * Returns 0 if animation is disabled (multiplier = 0).
-   * Uses ping-pong/mirror effect so animation smoothly reverses at endpoints.
-   * Note: This only affects visual animation, not audio playback.
+   * Loops normally (0→1, 0→1) to stay in sync with audio.
    */
   getProgress(currentTimeMs: number): number {
     if (settings.VISUAL_ANIMATION_MULTIPLIER === 0) {
@@ -329,15 +424,7 @@ export class ShapeAudio {
     // Apply the multiplier to stretch the visual animation duration
     const effectiveLoopBars =
       this.loopBars * settings.VISUAL_ANIMATION_MULTIPLIER;
-    const rawProgress = Metronome.getProgress(currentTimeMs, effectiveLoopBars);
-    // Apply triangle wave for ping-pong effect: 0->1->0
-    // First half: 0 to 0.5 maps to 0 to 1
-    // Second half: 0.5 to 1 maps to 1 to 0
-    if (rawProgress < 0.5) {
-      return rawProgress * 2;
-    } else {
-      return (1 - rawProgress) * 2;
-    }
+    return Metronome.getProgress(currentTimeMs, effectiveLoopBars);
   }
 
   /**

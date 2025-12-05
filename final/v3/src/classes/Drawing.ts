@@ -269,6 +269,9 @@ export class Drawing {
     // Update audio params every frame to react to GUI changes
     this.audio?.updateParams();
 
+    // Update FM frequency based on the traveling point's Y position
+    this.updateFMFrequencyFromWavePosition();
+
     // Update position from recorded motion path (if any)
     this.updateMotionPlayback();
 
@@ -546,6 +549,41 @@ export class Drawing {
     if (settings.SYNTHESIS_MODE === 'fm' && this.audio) {
       this.audio.updateFMFrequency(this.getCentroid());
     }
+  }
+
+  /**
+   * Updates FM frequency based on the current traveling point's Y position.
+   * Transforms local wave position to world coordinates.
+   */
+  private updateFMFrequencyFromWavePosition(): void {
+    if (settings.SYNTHESIS_MODE !== 'fm' || !this.audio || !this.isValidShape) {
+      return;
+    }
+
+    const wavePos = this.audio.getCurrentWavePosition(this.p.millis());
+    if (!wavePos) return;
+
+    // Transform local point to world coordinates
+    // The shape uses: translate, scale, rotate (in p5 order)
+    // Which means: rotate first, then scale, then translate
+    const cos = Math.cos(this.rotation);
+    const sin = Math.sin(this.rotation);
+
+    // Use the projected point (on simplified shape) for smoother pitch changes
+    const localX = wavePos.ptProjected.x;
+    const localY = wavePos.ptProjected.y;
+
+    // Scale
+    const sx = localX * this.scale;
+    const sy = localY * this.scale;
+
+    // Rotate
+    const ry = sx * sin + sy * cos;
+
+    // Translate (only need Y for frequency)
+    const worldY = ry + this.shapeTranslationY;
+
+    this.audio.updateFMFrequencyFromY(worldY);
   }
 
   /**
