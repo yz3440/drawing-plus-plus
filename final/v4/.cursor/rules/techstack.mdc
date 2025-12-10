@@ -1,0 +1,27 @@
+---
+description: Technology Stack & Conventions
+globs: *
+alwaysApply: true
+---
+
+# Tech Stack
+
+- **Runtime/Package Manager**: Bun
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS (v4 beta via Vite plugin)
+- **Graphics/Canvas**: p5.js
+- **Language**: TypeScript
+
+## Conventions
+
+- **Package Management**: Use `bun` for all package management commands (e.g., `bun install`, `bun run dev`, `bun add`).
+- **Styling**:
+  - Use Tailwind CSS utility classes for styling HTML elements.
+  - Tailwind v4 is configured via the Vite plugin (`@tailwindcss/vite`).
+- **Graphics/p5.js**:
+  - p5.js is used for canvas interactions.
+  - Classes interacting with p5 typically accept the `p5` instance (often denoted as `p`) in their constructor to support instance mode or modularity (e.g., `constructor(p: p5)`).
+  - Ensure p5 types (`@types/p5`) are leveraged for type safety.
+- **File Structure**:
+  - `src/classes/`: Contains logic/classes that encapsulate p5 drawing behavior.
+  - `src/main.ts`: Entry point.

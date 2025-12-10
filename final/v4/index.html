@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Audible Shapes</title>
+    <link href="/src/style.css" rel="stylesheet" />
+  </head>
+  <body
+    class="bg-black text-white m-0 p-0 overflow-hidden w-screen h-screen"
+    oncontextmenu="return false;"
+  >
+    <div id="canvas-container" class="w-full h-full"></div>
+
+    <!-- Shape context menu -->
+    <div
+      id="shape-context-menu"
+      class="fixed hidden bg-black border border-white/30 z-50 text-[11px]"
+    >
+      <div class="px-2 py-1.5 flex items-center gap-2">
+        <span class="text-white/40 w-10 shrink-0">Vol</span>
+        <input
+          id="menu-gain"
+          type="range"
+          min="0"
+          max="5"
+          step="0.05"
+          value="1"
+          class="w-20 h-px bg-white/30 appearance-none cursor-pointer accent-white"
+        />
+      </div>
+      <div class="px-2 py-1.5 flex items-center gap-2">
+        <span class="text-white/40 w-10 shrink-0">Wob</span>
+        <input
+          id="menu-wobble"
+          type="range"
+          min="0"
+          max="20"
+          step="0.05"
+          value="1"
+          class="w-20 h-px bg-white/30 appearance-none cursor-pointer accent-white"
+        />
+      </div>
+      <div class="border-t border-white/20"></div>
+      <button
+        id="menu-record"
+        class="w-full px-2 py-1 text-left text-white/80 hover:bg-white/10 cursor-pointer bg-transparent border-none"
+      >
+        Record
+      </button>
+      <button
+        id="menu-clear-recording"
+        class="w-full px-2 py-1 text-left text-white/80 hover:bg-white/10 cursor-pointer bg-transparent border-none"
+      >
+        Clear
+      </button>
+      <div class="border-t border-white/20"></div>
+      <button
+        id="menu-delete"
+        class="w-full px-2 py-1 text-left text-white/50 hover:bg-white/10 cursor-pointer bg-transparent border-none"
+      >
+        Delete
+      </button>
+    </div>
+
+    <!-- Info button -->
+    <button
+      id="info-btn"
+      class="fixed bottom-4 left-4 w-8 h-8 bg-black text-white border border-white text-sm font-bold hover:bg-black hover:text-white transition-colors cursor-pointer"
+      onclick="document.getElementById('info-dialog').showModal()"
+    >
+      i
+    </button>
+
+    <!-- Info dialog -->
+    <dialog
+      id="info-dialog"
+      class="bg-black text-white border border-white/20 p-0 max-w-md backdrop:bg-black/80 m-0"
+      style="position: fixed; bottom: 4rem; left: 1rem; top: auto; right: auto"
+      onclick="if(event.target===this)this.close()"
+    >
+      <div class="p-6">
+        <div class="space-y-4 text-sm">
+          <p class="m-0">
+            Scribble any polygon, and it will make a sound. The pitch depends on
+            the y-position of each coordinate, and how wobbly each side of the
+            polygon is.
+          </p>
+          <p class="m-0 text-white/50">Right-click a shape for options.</p>
+          <p class="m-0 text-white/50">Scroll wheel to resize.</p>
+        </div>
+      </div>
+    </dialog>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

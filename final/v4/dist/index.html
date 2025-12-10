@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Audible Shapes</title>
+    <script type="module" crossorigin src="./assets/index-XRpr3SjJ.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-B8nApCSb.css">
+  </head>
+  <body
+    class="bg-black text-white m-0 p-0 overflow-hidden w-screen h-screen"
+    oncontextmenu="return false;"
+  >
+    <div id="canvas-container" class="w-full h-full"></div>
+
+    <!-- Info button -->
+    <button
+      id="info-btn"
+      class="fixed bottom-4 left-4 w-8 h-8 bg-black text-white border border-white text-sm font-bold hover:bg-black hover:text-white transition-colors cursor-pointer"
+      onclick="document.getElementById('info-dialog').showModal()"
+    >
+      i
+    </button>
+
+    <!-- Info dialog -->
+    <dialog
+      id="info-dialog"
+      class="bg-black text-white border border-white/20 p-0 max-w-md backdrop:bg-black/80 m-0"
+      style="position: fixed; bottom: 4rem; left: 1rem; top: auto; right: auto"
+      onclick="if(event.target===this)this.close()"
+    >
+      <div class="p-6">
+        <div class="flex justify-between items-start mb-6">
+          <h2 class="text-xl font-bold m-0">HOW TO USE</h2>
+          <button
+            class="bg-black text-white border border-white w-8 h-8 text-lg font-bold cursor-pointer hover:bg-black hover:text-white"
+            onclick="document.getElementById('info-dialog').close()"
+          >
+            ×
+          </button>
+        </div>
+        <div class="space-y-4 text-sm">
+          <p class="m-0">Draw anything triangular.</p>
+          <p class="m-0">Can be a pizza slice, or a flower petal.</p>
+          <p class="m-0 text-white/50">Click on a shape to delete it.</p>
+        </div>
+      </div>
+    </dialog>
+
+  </body>
+</html>

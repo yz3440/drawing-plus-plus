@@ -1,0 +1,29 @@
+{
+  "name": "drawing-plus-plus",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0-beta.1",
+    "@types/lodash": "^4.17.0",
+    "@types/p5": "^1.7.6",
+    "tailwindcss": "^4.0.0-beta.1",
+    "typescript": "^5.0.2",
+    "vite": "^6.0.0"
+  },
+  "dependencies": {
+    "2d-geometry": "^3.0.0",
+    "@types/dat.gui": "^0.7.13",
+    "dat.gui": "^0.7.9",
+    "lodash": "^4.17.21",
+    "p5": "^1.11.0"
+  }
+}
+
+
+
